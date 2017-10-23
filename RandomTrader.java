@@ -30,10 +30,10 @@ public class RandomTrader extends ViewableAtomic {
 		public void deltext(double e, message x) {
 			Continue(e);
 			
-			if (phaseIs("passive")) {
+			if (phaseIs("ordering")) {
 				for (int i = 0; i < x.getLength(); i++)
 					if (messageOnPort(x, "TPort", i)){
-						holdIn("ordering", 100);
+						holdIn("passive", INFINITY);
 					}
 						else if (messageOnPort(x, "PBPort", i)){
 							holdIn("updating", 50);
