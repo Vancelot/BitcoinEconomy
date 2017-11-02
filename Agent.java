@@ -9,23 +9,30 @@ import view.modeling.ViewableAtomic;
 public class Agent extends ViewableAtomic {
 
 	protected Queue procQ;
+	protected int id;
 	protected float bitcoinPrice; 
 	protected float numBitcoin;
 	protected float cash;
 	protected boolean enterMarket;	
+	//types of agents are decided when agent enters the market
+	
 	
 	public Agent() {
-		this("Agent");
+		this("Agent",0,0,0,false);
 	}
 		
-		public Agent(String name) {
+		public Agent(String name, int id, float cash, float numBitcoin, boolean enterMarket) {
 			super (name);
 			procQ = new Queue();
 			addInport("TPort");
 			addInport("PBPort");
 			addOutport("OrderPort");
 			addTestInput("TPort", new entity("Transaction"));
-			addTestInput("PBPort", new entity("Price"));		
+			addTestInput("PBPort", new entity("Price"));
+			this.id = id;
+			this.cash = cash;
+			this.numBitcoin = numBitcoin;
+			this.enterMarket = enterMarket;
 		}
 	
 		public void initialize() {
@@ -59,6 +66,7 @@ public class Agent extends ViewableAtomic {
 		
 		public void deltint() {
 			 passivate();
+			 //wake up agent to enter market
 		}
 		
 		public void deltcon(double e, message x) {
@@ -84,7 +92,6 @@ public class Agent extends ViewableAtomic {
 		}
 		
 }
-
 
 
 
