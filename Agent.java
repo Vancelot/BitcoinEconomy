@@ -9,7 +9,7 @@ import view.modeling.ViewableAtomic;
 public class Agent extends ViewableAtomic {
 
     public enum AgentType {
-        MINER, RANDOM_TRADER, CHARTIRST
+        NONE, MINER, RANDOM_TRADER, CHARTIRST
     }
 
     protected Queue procQ; // Queue of input transactions
@@ -36,6 +36,7 @@ public class Agent extends ViewableAtomic {
         this.cash = cash;
         this.numBitcoin = numBitcoin;
         this.enterMarket = enterMarket;
+        this.type = AgentType.MINER;
     }
 
     public void initialize() {
