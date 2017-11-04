@@ -6,7 +6,7 @@ import model.modeling.*;
 
 import view.modeling.ViewableAtomic;
 
-public class RandomTrader extends ViewableAtomic {
+public class RandomTrader extends Agent {
 
 	public RandomTrader() {
 		this("RandomTrader");
