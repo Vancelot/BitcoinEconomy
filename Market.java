@@ -13,6 +13,9 @@ public class Market extends ViewableDigraph {
     private int Nt; // Total number of agents
     private OrderBook orderBook;
     
+    private final int NUMBER_OF_INITIAL_TRADERS = 160;
+    private final int TOTAL_NUMBER_OF_TRADERS = 39649;
+    
     public Market() {
         super("Market");
 
@@ -20,18 +23,20 @@ public class Market extends ViewableDigraph {
         agents = new ArrayList<Agent>();
         orderBook = new OrderBook();
         
-        for (int i = 0; i < Nt; i++) {
-            // Only let the first few agent enter at initialization
+        // Instantiate all agents at the start of simulation; each will enter the market later themselves
+        for (int i = 0; i < TOTAL_NUMBER_OF_TRADERS; i++) {
+            // Only let the first few agents enter at initialization
             boolean enterMarket = false;
-            if (i <= 16)
+            if (i <= NUMBER_OF_INITIAL_TRADERS)
                 enterMarket = true;
             
+            // index will be the ID  of agents 0, 1, 2, ...
             Agent agent = new Agent("Agent" + i, i, 0, 0, enterMarket);
             agents.add(agent);
             
-            add(agent);
+            add(agent); // Add this agent to the Market model
         }
-        add(orderBook);
+        add(orderBook); // Add the Model Book to the Market model
         
         addOutport("outBitcoins");
 /*

@@ -1,5 +1,6 @@
 package BitcoinEcon;
 
+import java.lang.Math;
 import GenCol.*;
 
 import model.modeling.*;
@@ -14,9 +15,9 @@ public class Agent extends ViewableAtomic {
 
     protected Queue procQ; // Queue of input transactions
     protected int id; // ID of an agent, all agents will have ID starting from 0 to the total number
-    protected float bitcoinPrice; // Bitcoin price, updated from the input from the Experimental Frame
-    protected float numBitcoin; // Number of Bitcoins the agent holds
-    protected float cash; // Fiat cash the agent holds
+    protected double bitcoinPrice; // Bitcoin price, updated from the input from the Experimental Frame
+    protected double numBitcoin; // Number of Bitcoins the agent holds
+    protected double cash; // Fiat cash the agent holds
     protected boolean enterMarket; // Indication of whether the agent is active or not
     protected AgentType type; // Types of agent, to be decided when the agent enters the market
 
@@ -72,18 +73,34 @@ public class Agent extends ViewableAtomic {
 
     public void deltint() {
         passivate();
-        
+
         // Wake up agent to enter market
-        if (enterToMarket())
+        int t = 0; // TODO where to find the time attribute???
+        if (enterToMarket(t))
+        {
             enterMarket = true;
+            this.cash = getInitialCash(t);
+        }
     }
 
-    private boolean enterToMarket()
-    {
-        // Create a Zipf's law function per time and return true when the ID matches
-        // the number of agents to enter the market
+    private boolean enterToMarket(int t) {
+        // Calculate the total number of traders at a particular time t
+        // Nt(t) = a * e ^ (b * (608 + t))
+        final int A = 2624;
+        final double B = 0.002971;
+        int n_t = (int) (A * Math.exp(B * (608 + t)));
+
+        if (id <= n_t)
+            return true;
+        else
+            return false;
+    }
+
+    private double getInitialCash(int t) {
+        // Create a Zipf's law function per time
+        // Bt = b1 * ln(Nt) + y;
         
-        return false;
+        return 0;
     }
     
     public void deltcon(double e, message x) {
