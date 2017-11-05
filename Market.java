@@ -14,7 +14,9 @@ public class Market extends ViewableDigraph {
     private OrderBook orderBook;
     
     private final int NUMBER_OF_INITIAL_TRADERS = 160;
-    private final int TOTAL_NUMBER_OF_TRADERS = 39649;
+    private final int TOTAL_NUMBER_OF_TRADERS = 39649; // Total number of traders at the end of simulation
+    private final double INITIAL_BITCOINS_OF_INITIAL_TRADERS = 87.28;
+    private final double INITIAL_BITCOIN_PRICE = 0.0649; // The average price as of September 2010
     
     public Market() {
         super("Market");
@@ -31,7 +33,7 @@ public class Market extends ViewableDigraph {
                 enterMarket = true;
             
             // index will be the ID  of agents 0, 1, 2, ...
-            Agent agent = new Agent("Agent" + i, i, 0, 0, enterMarket);
+            Agent agent = new Agent("Agent" + i, i, INITIAL_BITCOINS_OF_INITIAL_TRADERS, INITIAL_BITCOIN_PRICE, enterMarket);
             agents.add(agent);
             
             add(agent); // Add this agent to the Market model

@@ -1,6 +1,7 @@
 package BitcoinEcon;
 
 import java.lang.Math;
+
 import GenCol.*;
 
 import model.modeling.*;
@@ -25,7 +26,7 @@ public class Agent extends ViewableAtomic {
         this("Agent", 0, 0, 0, false);
     }
 
-    public Agent(String name, int id, float cash, float numBitcoin, boolean enterMarket) {
+    public Agent(String name, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
         super(name);
         procQ = new Queue();
         addInport("TPort");
@@ -34,8 +35,8 @@ public class Agent extends ViewableAtomic {
         addTestInput("TPort", new entity("Transaction"));
         addTestInput("PBPort", new entity("Price"));
         this.id = id;
-        this.cash = cash;
         this.numBitcoin = numBitcoin;
+        this.cash = numBitcoin * bitcoinPrice * 5; // Nominal cash of initial trader equal to 5 times the nominal value of their crypto cash
         this.enterMarket = enterMarket;
         this.type = AgentType.MINER;
     }
@@ -99,8 +100,10 @@ public class Agent extends ViewableAtomic {
     private double getInitialCash(int t) {
         // Create a Zipf's law function per time
         // Bt = b1 * ln(Nt) + y;
-        
-        return 0;
+        // TODO: Issue with the jsc package. Need to install a standalone package to import jsc.distributions.Pareto
+        double b_t = 0;
+
+        return b_t / id;
     }
     
     public void deltcon(double e, message x) {
