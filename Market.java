@@ -24,6 +24,9 @@ public class Market extends ViewableDigraph {
         Nt = 30000;
         agents = new ArrayList<Agent>();
         orderBook = new OrderBook();
+
+        addOutport("outTransactions");
+        addOutport("inBitcoinPrice");
         
         // Instantiate all agents at the start of simulation; each will enter the market later themselves
         for (int i = 0; i < TOTAL_NUMBER_OF_TRADERS; i++) {
@@ -37,6 +40,11 @@ public class Market extends ViewableDigraph {
             agents.add(agent);
             
             add(agent); // Add this agent to the Market model
+            
+            // Connect the ports from this agent to the Order Book
+            addCoupling(agent, "inTransactions", orderBook, "OutTransactions");
+            //addCoupling(agent, "outRed", , ""); TODO to connect to the Price of Bitcoins from the Experimental Frame
+            addCoupling(agent, "outOrders", orderBook, "InOrders");
         }
         add(orderBook); // Add the Model Book to the Market model
         

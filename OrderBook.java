@@ -4,15 +4,22 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.util.ArrayList;
 
+import GenCol.Queue;
 import view.modeling.ViewableAtomic;
 import view.modeling.ViewableComponent;
 import view.modeling.ViewableDigraph;
 
 public class OrderBook extends ViewableDigraph {
 
+    protected Queue procQ; // Queue of input orders
+    
     public OrderBook() {
         super("OrderBook");
-
+        
+        procQ = new Queue();
+        
+        addInport("InOrders");
+        addOutport("OutTransactions");
     }
 
     /**

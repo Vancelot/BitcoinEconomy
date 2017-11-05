@@ -29,11 +29,11 @@ public class Agent extends ViewableAtomic {
     public Agent(String name, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
         super(name);
         procQ = new Queue();
-        addInport("TPort");
-        addInport("PBPort");
-        addOutport("OrderPort");
-        addTestInput("TPort", new entity("Transaction"));
-        addTestInput("PBPort", new entity("Price"));
+        addInport("inTransactions");
+        addInport("inBitcoinPrice");
+        addOutport("outOrders");
+        addTestInput("inTransactions", new entity("Transaction"));
+        addTestInput("inBitcoinPrice", new entity("Price"));
         this.id = id;
         this.numBitcoin = numBitcoin;
         this.cash = numBitcoin * bitcoinPrice * 5; // Nominal cash of initial trader equal to 5 times the nominal value of their crypto cash
