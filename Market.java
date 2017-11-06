@@ -21,7 +21,6 @@ public class Market extends ViewableDigraph {
     public Market() {
         super("Market");
 
-        Nt = 30000;
         agents = new ArrayList<Agent>();
         orderBook = new OrderBook();
 
