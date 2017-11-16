@@ -97,11 +97,14 @@ public class Agent extends ViewableAtomic {
         if (AgentType.MINER != null) {
             cash = cash - electricityCost(sigma);
             numBitcoin = numBitcoin + minedBitcoinPerMiner(sigma);
+
             if (sigma == decisionTime(sigma)) {
                 // purchase hardware
 
                 if (cash > 0 && numBitcoin > 0) {
 
+                    double hashRate = 0;
+                    hashRate = hashRate + minerHashRate(sigma);
                     cash = cash - (cash * percentCashForHardware(sigma));
                     numBitcoin = numBitcoin - (numBitcoin * percentBitcoinCashForHardware(sigma));
                 }
@@ -110,8 +113,8 @@ public class Agent extends ViewableAtomic {
                 // issue sell order
 
                 holdIn("ordering", 20);
-                }
-            
+            }
+
         }
 
     }
@@ -149,7 +152,7 @@ public class Agent extends ViewableAtomic {
     }
 
     private boolean enterToMarket(double t) {
-        if (id <= getTotalNumberOfBitcoins(t))
+        if (id <= getTotalNumberOfTraders(t))
             return true;
         else
             return false;
@@ -160,13 +163,13 @@ public class Agent extends ViewableAtomic {
         // Bt = b1 * ln(Nt) + y;
         // TODO: Issue with the jsc package. Need to install a standalone package to
         // import jsc.distributions.Pareto
-        double n_t = getTotalNumberOfBitcoins(t);
+        double n_t = getTotalNumberOfTraders(t);
         double b_t = INITIAL_BITCOINS_OF_RICHEST_TRADER_AT_TIME_1 * Math.log(n_t) + EULER_MASCHERONI_CONSTANT_GAMMA;
 
         return b_t / id;
     }
 
-    private double getTotalNumberOfBitcoins(double t) {
+    private double getTotalNumberOfTraders(double t) {
         // Calculate the total number of traders at a particular time t
         // Nt(t) = a * e ^ (b * (608 + t))
         final int A = 2624;
@@ -260,15 +263,16 @@ public class Agent extends ViewableAtomic {
     }
 
     private double minerHashRate(double t) {
+        // TODO: Clear up initial unit hash rate
         // Hashing capability at time t of i-th miner
         // ri(0)=0.0173 GH/sec
         // ri(t)=sum(riu(t))
 
         double riu;
         if (t == 0) {
-            riu = marketUnitHashRate(t);
-        } else
             riu = newUnitHashRate(t);
+        } else
+            riu = marketUnitHashRate(t);
 
         double initMinerRi;
         if (t == 0) {
@@ -389,7 +393,7 @@ public class Agent extends ViewableAtomic {
         if (AgentType.RANDOM_TRADER != null) {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.4);
         }
-       
+
         double bsi;
         if (AgentType.MINER != null) {
             bsi = numBitcoin;
