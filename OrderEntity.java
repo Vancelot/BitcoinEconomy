@@ -5,34 +5,49 @@ import java.lang.*;
 import GenCol.entity;
 
 public class OrderEntity extends entity {
-    private int buyerId;
-    private int sellerId;
-    private double bitcoins;
+    public enum OrderType {
+        NONE, BUY, SELL
+    }
 
-    public OrderEntity(double t) {
-        bitcoins = t;
+    OrderType orderType;
+    public int agentId;
+    public double amount; // $ if BUY or Bitcoins if SELL
+    public double residualAmount; // $ if BUY or Bitcoins if SELL,
+                                   // Used when an order is partially completed by the previous matching
+                                   // transaction
+                                   // by the Order book
+    public double limitPrice; // The price to which a trader desires to conclude their transaction
+    public int expirationPeriod; // If the order is not fully satisfied it is removed from the book after
+                                  // expiration period
 
+    public OrderEntity(OrderType aOrderType, int aAgentId, double aAmount, double aLimitPrice, int aExpirationPeriod) {
+        this.orderType = aOrderType;
+        this.agentId = aAgentId;
+        this.amount = aAmount;
+        this.residualAmount = 0;
+        this.limitPrice = aLimitPrice;
+        this.expirationPeriod = aExpirationPeriod;
     }
 
     public boolean greaterThan(entity ent) {
-        return (this.v > ((OrderEntity) ent).getv());
+        return (this.amount > ((OrderEntity) ent).getv());
     }
 
     public void setv(double t) {
-        v = t;
+        amount = t;
     }
 
     public double getv() {
-        return v;
+        return amount;
     }
 
     public void print() {
-        System.out.print(v);
+        System.out.print(amount);
     }
 
     public boolean equal(entity ent) {
         // System.out.println(v + " " + ((doubleEnt)ent).getv());
-        return (Math.abs(this.v - ((OrderEntity) ent).getv()) < 0.0000001);
+        return (Math.abs(this.amount - ((OrderEntity) ent).getv()) < 0.0000001);
     }
 
     public boolean equals(Object ent) { // needed for Relation
@@ -42,12 +57,12 @@ public class OrderEntity extends entity {
     }
 
     public entity copy() {
-        OrderEntity ip = new OrderEntity(getv());
+        OrderEntity ip = new OrderEntity(orderType, agentId, amount, limitPrice, expirationPeriod);
         return (entity) ip;
     }
 
     public String getName() {
-        return Double.toString(v);
+        return Double.toString(amount);
     }
 
 }
