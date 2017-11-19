@@ -27,11 +27,11 @@ public class Agent extends ViewableAtomic {
     protected AgentType type; // Types of agent, to be decided when the agent enters the market
 
     public Agent() {
-        this("Agent", 0, 0, 0, false);
+        this(AgentType.NONE, 0, 0, 0, false);
     }
 
-    public Agent(String name, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
-        super(name);
+    public Agent(AgentType type, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
+
         procQ = new Queue();
         addInport("inTransactions");
         addInport("inBitcoinPrice");
@@ -61,16 +61,16 @@ public class Agent extends ViewableAtomic {
             if (phaseIs("passive")) {
                 for (int i = 0; i < x.getLength(); i++)
                     if (messageOnPort(x, "inBitcoinPrice", i)) {
-                        holdIn("updatePrice", 100);
+                        holdIn("updatePrice", 0);
                     } else if (messageOnPort(x, "inTransactions", i)) {
-                        holdIn("updateWallet", 50);
+                        holdIn("updateWallet", 0);
                     }
             }
 
             if (phaseIs("passive")) {
                 for (int i = 0; i < x.getLength(); i++)
                     if (messageOnPort(x, "inBitcoinPrice", i)) {
-                        holdIn("updatingPrice", 100);
+                        holdIn("updatingPrice", 0);
                     }
             }
         }
@@ -98,25 +98,29 @@ public class Agent extends ViewableAtomic {
             cash = cash - electricityCost(sigma);
             numBitcoin = numBitcoin + minedBitcoinPerMiner(sigma);
 
-            if (sigma == decisionTime(sigma)) {
-                // purchase hardware
+            if (cash > 0 && numBitcoin > 0) {
+                if (phaseIs("passive") && sigma == sigma + decisionTime(sigma)) {
+                    // purchase hardware
 
-                if (cash > 0 && numBitcoin > 0) {
+                    holdIn("issueSellOrder", 0);
 
                     double hashRate = 0;
                     hashRate = hashRate + minerHashRate(sigma);
-                    cash = cash - (cash * percentCashForHardware(sigma));
-                    numBitcoin = numBitcoin - (numBitcoin * percentBitcoinCashForHardware(sigma));
+
+                    // cash = cash - (cash * percentCashForHardware(sigma));
+                    // numBitcoin = numBitcoin - (numBitcoin *
+                    // percentBitcoinCashForHardware(sigma));
+                    // These values must be extracted from Transaction messages
+
                 }
+
             }
             if (phaseIs("passive") && cash <= 0) {
                 // issue sell order
 
-                holdIn("ordering", 20);
+                holdIn("issueSellOrder", 20);
             }
-
         }
-
     }
 
     private AgentType determineAgentType(double t) {
@@ -161,7 +165,7 @@ public class Agent extends ViewableAtomic {
     private double getInitialBitcoins(double t) {
         // Create a Zipf's law function per time
         // Bt = b1 * ln(Nt) + y;
-        // TODO: Issue with the jsc package. Need to install a standalone package to
+        // TODO: Issue with the jsc package. Need to install a stand alone package to
         // import jsc.distributions.Pareto
         double n_t = getTotalNumberOfTraders(t);
         double b_t = INITIAL_BITCOINS_OF_RICHEST_TRADER_AT_TIME_1 * Math.log(n_t) + EULER_MASCHERONI_CONSTANT_GAMMA;
@@ -197,7 +201,7 @@ public class Agent extends ViewableAtomic {
         // g1i(t) = lognormal(mu,sig), mu = 0.6, sig = 0.15
         // if g1i > 1 return 1
 
-        Random r = new Random((long) t);
+        Random r = new Random();
         double g1i = (double) Math.log(r.nextGaussian() * 0.15 + 0.6);
 
         if (g1i > 1)
@@ -362,6 +366,8 @@ public class Agent extends ViewableAtomic {
         return (Plim);
     }
 
+    // **************************** Sell ********************
+
     private double sellLimitPrice() {
         // Price to trade Bitcoin for Cash
         // Random draw from a gaussian distribution
@@ -380,7 +386,7 @@ public class Agent extends ViewableAtomic {
     }
 
     private double numBitcoinSell() {
-        // Number of Bitcoin in sell order
+        // sa = Number of Bitcoin in sell order
         // Random variable from lognormal distribution
         // Random Trader --> ave = 0.25, stdv = 0.2
         // Chartist --> ave 0.4, stdv = 0.2
@@ -394,14 +400,72 @@ public class Agent extends ViewableAtomic {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.4);
         }
 
-        double bsi;
-        if (AgentType.MINER != null) {
-            bsi = numBitcoin;
-        } else
-            bsi = numBitcoin * beta;
+        double sa;
+        // TODO: bsi = numBitcoin - numBitcoin in pending Transactions
 
-        return (bsi);
+        double bsi = numBitcoin; // - numBitcoin in prending Transactions
+        
+        if (AgentType.MINER != null) {
+            sa = bsi * percentBitcoinCashForHardware(sigma);
+
+        } else
+            sa = bsi * beta;
+
+        return (sa);
     }
+
+    // ****************** End Sell **************************
+    
+    
+
+    // ******************* Buy *************************
+
+    private double buyLimitPrice() {
+        // Price to trade Bitcoin for Cash
+        // N(mu, sig) = Random draw from a gaussian distribution
+        // ave = 1, stdv << 1
+
+        Random r = new Random();
+        double var = (double) Math.round(r.nextGaussian() * .00001 + 1);
+
+        double result = r.nextDouble(); // 0.0 to 1.0
+
+        if (result < marketOrderProb())
+            return (0);
+        else {
+            return (bitcoinPrice * var);
+        }
+    }
+
+    private double numBitcoinBuy() {
+        // ba = Number of Bitcoin in Buy order
+        // beta = Random variable from lognormal distribution
+        // Random Trader --> ave = 0.25, stdv = 0.2
+        // Chartist --> ave 0.4, stdv = 0.2
+
+        Random r = new Random();
+        double beta = 0;
+        if (AgentType.CHARTIST != null) {
+            beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.25);
+        }
+        if (AgentType.RANDOM_TRADER != null) {
+            beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.4);
+        }
+
+        double ba;
+        // TODO: cbi = cash - cash in pending Transactions
+
+        double cbi = cash; // - cash in pending Transactions 
+        
+        if (AgentType.MINER != null) {
+            ba = 0;
+        } else
+            ba = cbi * beta / bitcoinPrice;
+
+        return (ba);
+    }
+    
+    // ************* End Buy and Sell Orders *************************************
 
     public void deltcon(double e, message x) {
         System.out.println("confluent");
@@ -410,13 +474,23 @@ public class Agent extends ViewableAtomic {
     }
 
     public message out() {
-        // TODO: Messages need to have id, limit price, and number of bitcoin
+        // TODO: Messages need to have id, buy/sell, limit price, and number of bitcoin,
+        // expiration date
 
         message m = new message();
 
-        content con = makeContent("OrderPort", new entity("Order"));
-        if (phaseIs("ordering")) {
-            m.add(con);
+        content con1 = makeContent("OrderPort",
+                new OrderEntity(OrderType.SELL, id, numBitcoinSell(), sellLimitPrice(), 0));
+
+        content con2 = makeContent("OrderPort",
+                new OrderEntity(OrderType.BUY, id, numBitcoinBuy(), buyLimitPrice(), 0));
+
+        if (phaseIs("issueSellOrder")) {
+            m.add(con1);
+        }
+
+        if (phaseIs("issueBuyOrder")) {
+            m.add(con2);
         }
 
         return m;
