@@ -1,11 +1,11 @@
 package BitcoinEcon;
 
-public class Order {
+public class Order implements Comparable<Order> {
     public enum OrderType {
         NONE, BUY, SELL
     }
 
-    OrderType orderType;
+    OrderType type;
     public int agentId;
     public double amount; // $ if BUY or Bitcoins if SELL
     public double residualAmount; // $ if BUY or Bitcoins if SELL,
@@ -17,16 +17,32 @@ public class Order {
                                  // expiration period
 
     public Order() {
-        this(OrderType.NONE, 0, 0.0, 0.0, 0.0, 0);
+        this(OrderType.NONE, 0, 0.0, 0.0, 0);
     }
-    
-    public Order(OrderType aOrderType, int aAgentId, double aAmount, double aResidualAmount, double aLimitPrice,
-            int aExpirationPeriod) {
-        this.orderType = aOrderType;
+
+    public Order(OrderType aOrderType, int aAgentId, double aAmount, double aLimitPrice, int aExpirationPeriod) {
+        this.type = aOrderType;
         this.agentId = aAgentId;
         this.amount = aAmount;
-        this.residualAmount = aResidualAmount;
+        this.residualAmount = aAmount; // Initial Residual Amount is always initialized to the Amount
         this.limitPrice = aLimitPrice;
         this.expirationPeriod = aExpirationPeriod;
     }
+
+    @Override
+    public int compareTo(Order other) {
+        int compare = 0;
+        if (type == OrderType.BUY) { // Descending order
+            compare = (this.limitPrice < other.limitPrice ? 1 : (this.limitPrice == other.limitPrice ? 0 : -1));
+        } else {
+            compare = (this.limitPrice < other.limitPrice ? -1 : (this.limitPrice == other.limitPrice ? 0 : 1));
+        }
+        return compare;
+    }
+
+    @Override
+    public String toString() {
+        return " Order: " + this.type + ", Limit Price: " + this.limitPrice;
+    }
+
 }
