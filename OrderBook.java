@@ -40,7 +40,7 @@ public class OrderBook extends ViewableAtomic {
         marketPrice = 0;
 
         addInport("InOrders");
-        addOutport("OutTransactions");
+        addOutport("OutTransactions"); // Port to output matched transactions
     }
 
     public void initialize() {
@@ -113,6 +113,7 @@ public class OrderBook extends ViewableAtomic {
         while ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
                 || (sellList.get(0).limitPrice == 0)) {
             Transaction transaction;
+            TransactionEntity transEntity;
 
             // First determine the price for the transaction
             double price = determinePrice(buyList.get(0).limitPrice, sellList.get(0).limitPrice);
@@ -122,7 +123,8 @@ public class OrderBook extends ViewableAtomic {
             // Start to execute order: compare orders in terms of Residual Amount in cash
             if (buyerResidualAmountInCash == sellerResidualAmountInCash) {
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price);
-                transactionQ.add(transaction);
+                transEntity = new TransactionEntity(transaction);
+                transactionQ.add(transEntity);
 
                 sellList.remove(0); // This sell order is completed
                 buyList.remove(0); // This buy order is completed
@@ -130,14 +132,16 @@ public class OrderBook extends ViewableAtomic {
                 buyList.get(0).residualAmount = buyerResidualAmountInCash - sellerResidualAmountInCash;
 
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price);
-                transactionQ.add(transaction);
+                transEntity = new TransactionEntity(transaction);
+                transactionQ.add(transEntity);
 
                 sellList.remove(0); // This sell order is completed
             } else {
                 sellList.get(0).residualAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
 
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price);
-                transactionQ.add(transaction);
+                transEntity = new TransactionEntity(transaction);
+                transactionQ.add(transEntity);
 
                 buyList.remove(0); // This buy order is completed
             }
@@ -170,6 +174,7 @@ public class OrderBook extends ViewableAtomic {
 
     public void deltint() {
         passivate();
+
     }
 
     public message out() {
@@ -177,8 +182,15 @@ public class OrderBook extends ViewableAtomic {
         message m = new message();
 
         content con = makeContent("OutTransactions", new entity("Transaction"));
-        if (phaseIs("matching")) {
+
+        while (transactionQ.first() != null) {
+            TransactionEntity transactionEntity = (TransactionEntity) transactionQ.first(); 
+            
+            con = makeContent("OutTransactions", transactionEntity);
             m.add(con);
+
+            transactionQ.remove();
+            // Make sure all messages will be sent out
         }
 
         return m;
