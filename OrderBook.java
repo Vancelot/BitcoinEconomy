@@ -72,7 +72,7 @@ public class OrderBook extends ViewableAtomic {
                         // Then save to list in the sorted order
                         buyList.add(order);
                         Collections.sort(buyList);
-                        
+
                         holdIn("matching", 0);
                     } else if (order.type == Order.OrderType.SELL) {
                         // Initialize Residual Amount to Amount
@@ -80,34 +80,38 @@ public class OrderBook extends ViewableAtomic {
                         // Then save to list in the sorted order
                         sellList.add(order);
                         Collections.sort(sellList);
-                        
+
                         holdIn("matching", 0);
                     }
                 }
-            
+
             // Perform the matching process until no match found
             matchOrders();
         }
     }
 
     // Match the orders from the Buy list and Sell list as follows:
-    //  The first buy order and the first sell order of the lists are inspected to verify if they match
-    //      If they match a transaction occurs.
-    //  The order with the smallest residual amount is fully executed
-    //      Whereas the order with the largest amount is only partially executed, and remains at the head of the list,
-    //      With the residual amount reduced by the amount of the matching order
-    //      If both orders have the same amount they are fully executed
-    //      After the transaction: 
-    //          The next pair of orders at the head of the lists are checked for matching
-    //              If they match they are executed
-    //                  And so on until they do not match anymore
-    //                  Before the book can accept new orders, all the matching orders are satisfied
-    //      A sell order of index j matches a buy order of index i and vice versa, only if
-    //          s_j <= b_ior if one of the two limit prices, or both, are equal to 0
+    // The first buy order and the first sell order of the lists are inspected to
+    // verify if they match
+    // If they match a transaction occurs.
+    // The order with the smallest residual amount is fully executed
+    // Whereas the order with the largest amount is only partially executed, and
+    // remains at the head of the list,
+    // With the residual amount reduced by the amount of the matching order
+    // If both orders have the same amount they are fully executed
+    // After the transaction:
+    // The next pair of orders at the head of the lists are checked for matching
+    // If they match they are executed
+    // And so on until they do not match anymore
+    // Before the book can accept new orders, all the matching orders are satisfied
+    // A sell order of index j matches a buy order of index i and vice versa, only
+    // if
+    // s_j <= b_ior if one of the two limit prices, or both, are equal to 0
     private void matchOrders() {
         // A sell order (with index j) and buy order (with index i) are considered
         // a match if sj <= bi
-        while (buyList.get(0).limitPrice > sellList.get(0).limitPrice) {
+        while ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
+                || (sellList.get(0).limitPrice == 0)) {
             Transaction transaction;
 
             // First determine the price for the transaction
@@ -115,7 +119,7 @@ public class OrderBook extends ViewableAtomic {
             double buyerResidualAmountInCash = buyList.get(0).residualAmount;
             double sellerResidualAmountInCash = sellList.get(0).residualAmount * price;
 
-            // Compare orders in terms of Residual Amount in cash
+            // Start to execute order: compare orders in terms of Residual Amount in cash
             if (buyerResidualAmountInCash == sellerResidualAmountInCash) {
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price);
                 transactionQ.add(transaction);
