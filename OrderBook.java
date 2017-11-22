@@ -26,6 +26,8 @@ public class OrderBook extends ViewableAtomic {
     protected ArrayList<Order> sellList;
     protected double marketPrice;
 
+    protected int time;
+
     public OrderBook() {
         this("OrderBook");
     }
@@ -37,9 +39,8 @@ public class OrderBook extends ViewableAtomic {
         buyList = new ArrayList<Order>();
         sellList = new ArrayList<Order>();
 
-        marketPrice = 0;
-
         addInport("InOrders");
+        addInport("InTimer");
         addOutport("OutTransactions"); // Port to output matched transactions
     }
 
@@ -48,6 +49,9 @@ public class OrderBook extends ViewableAtomic {
         transactionQ = new Queue();
         sigma = INFINITY;
         phase = "passive";
+
+        marketPrice = 0;
+        time = 0;
     }
 
     public void deltext(double e, message x) {
@@ -83,10 +87,15 @@ public class OrderBook extends ViewableAtomic {
 
                         holdIn("matching", 0);
                     }
-                }
+                } else if (messageOnPort(x, "InTimer", i)) {
+                    time++;
 
-            // Perform the matching process until no match found
-            matchOrders();
+                    // Perform the matching process until no match found
+                    matchOrders();
+
+                    removeExpiredBuyOrders();
+                    removeExpiredSellOrders();
+                }
         }
     }
 
@@ -148,6 +157,37 @@ public class OrderBook extends ViewableAtomic {
         }
     }
 
+    private void removeExpiredBuyOrders() {
+        for (int counter = 0; counter < buyList.size(); counter++) {
+            if (time >= buyList.get(counter).expirationTime) {
+                Transaction transaction = new Transaction(buyList.get(counter), null, 0);
+                TransactionEntity transEntity = new TransactionEntity(transaction);
+                transactionQ.add(transEntity);
+
+                buyList.remove(counter);
+            }
+        }
+    }
+
+    private void removeExpiredSellOrders() {
+        for (int counter = 0; counter < sellList.size(); counter++) {
+            if (time >= sellList.get(counter).expirationTime) {
+                Transaction transaction = new Transaction(null, sellList.get(counter), 0);
+                TransactionEntity transEntity = new TransactionEntity(transaction);
+                transactionQ.add(transEntity);
+
+                sellList.remove(counter);
+            }
+        }
+    }
+    
+    // Check whether the order expires
+    private boolean isOrderValid(Order order) {
+        boolean valid = false;
+
+        return valid;
+    }
+
     // Return the price with the following logic:
     // - When one of the two orders has limit price equal to zero
     // If bi>0, then pT = min(bi,p(t))
@@ -184,8 +224,8 @@ public class OrderBook extends ViewableAtomic {
         content con = makeContent("OutTransactions", new entity("Transaction"));
 
         while (transactionQ.first() != null) {
-            TransactionEntity transactionEntity = (TransactionEntity) transactionQ.first(); 
-            
+            TransactionEntity transactionEntity = (TransactionEntity) transactionQ.first();
+
             con = makeContent("OutTransactions", transactionEntity);
             m.add(con);
 
