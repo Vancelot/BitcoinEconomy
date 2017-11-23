@@ -4,11 +4,15 @@ import java.lang.Math;
 
 import java.util.Random;
 
+import BitcoinEcon.Order.OrderType;
+
 import GenCol.*;
 
 import model.modeling.*;
 
 import view.modeling.ViewableAtomic;
+
+import model.modeling.message;
 
 public class Agent extends ViewableAtomic {
     private final double EULER_MASCHERONI_CONSTANT_GAMMA = 0.57721566490153286060651209008240243104215933593992;
@@ -18,73 +22,176 @@ public class Agent extends ViewableAtomic {
         NONE, MINER, RANDOM_TRADER, CHARTIST
     }
 
-    protected Queue procQ; // Queue of input transactions
-    protected int id; // ID of an agent, all agents will have ID starting from 0 to the total number
-    protected double bitcoinPrice; // Bitcoin price, updated from the input from the Experimental Frame
-    protected double numBitcoin; // Number of Bitcoins the agent holds
-    protected double cash; // Fiat cash the agent holds
-    protected boolean enterMarket; // Indication of whether the agent is active or not
     protected AgentType type; // Types of agent, to be decided when the agent enters the market
 
+    protected int id; // ID of an agent, all agents will have ID starting from 0 to the total number
+    protected double numBitcoinSell; // Number of Bitcoins in a sell order
+    protected double sellLimitPrice; // Sell limit price in a sell order
+    protected double numBitcoinBuy; // Number of Bitcoin in a buy order
+    protected double buyLimitPrice; // Buy limit price in a buy order
+    protected int expirationTime; // Time that Order has to expire
+
+    protected Queue agentQ; // Queue of transactions and prices
+
+    protected entity transaction; // transaction message
+    protected entity price; // price message
+
+    protected double bitcoinPrice; // Bitcoin price, updated from the input from the Experimental Frame
+
+    protected double numBitcoin; // Number of Bitcoins the agent holds
+    protected double pendingBitcoin; // Pending Bitcoins in OrderBook
+    protected double cash; // Fiat cash the agent holds
+    protected double pendingCash; // pending cash to buy Bitcoins in OrderBook
+
+    protected double chartistSumOfSquare;
+    protected int chartistOrderTime; // counts number of days in a time window
+
+    protected int marketTime; // Time from beginning of simulation
+    protected int agentTime; // Time agent has been active
+    protected int enterMarketTime; // Time that agent enters the market
+    protected int minerDecisionTime; // Time Miner makes a decision to buy hardware 
+    
+    protected entity uTime; // Time from transducer
+    
+
+    protected boolean buyHardware;
+    protected boolean enterMarket; // Indication of whether the agent is active or not
+
+    protected int updatePriceTime;
+    protected int updateWalletTime;
+
     public Agent() {
-        this(AgentType.NONE, 0, 0, 0, false);
+        this("Agent", 0, 0, 0, false, 0, 0);
     }
 
-    public Agent(AgentType type, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
+    public Agent(String name, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket, int updatePriceTime,
+            int updateWalletTime) {
+        super(name);
 
-        procQ = new Queue();
+        agentQ = new Queue();
+
         addInport("inTransactions");
         addInport("inBitcoinPrice");
+        addInport("inTime");
+
         addOutport("outOrders");
         addTestInput("inTransactions", new entity("Transaction"));
         addTestInput("inBitcoinPrice", new entity("Price"));
+
         this.id = id;
         this.numBitcoin = numBitcoin;
         this.cash = numBitcoin * bitcoinPrice * 5; // Nominal cash of initial trader equal to 5 times the nominal value
                                                    // of their crypto cash
         this.enterMarket = enterMarket;
+        this.chartistSumOfSquare = 0;
+        this.chartistOrderTime = 0;
+        this.updatePriceTime = updatePriceTime;
+        this.updateWalletTime = updateWalletTime;
     }
 
     public void initialize() {
         super.initialize();
-        procQ = new Queue();
+
         bitcoinPrice = 0;
         sigma = INFINITY;
         phase = "passive";
+        this.marketTime = 0;
+        this.agentTime = 0;
+        this.chartistOrderTime = timeWindow(agentTime);
     }
 
     public void deltext(double e, message x) {
         Continue(e);
+
+        // Clock for agents
+        for (int i = 0; i < x.getLength(); i++)
+            if (messageOnPort(x, "inTime", i)) {
+                uTime = x.getValOnPort("inTime", i);
+                marketTime = Integer.parseInt(uTime.toString()); // TODO: Takes message (entity) on port converts to
+                                                                // string, then to integer
+                
+                if (enterMarket) {
+
+                    agentTime = marketTime - enterMarketTime;
+                    
+                    issueOrder();
+                    // boolean that tells Random Traders and Chartists to issue orders
+                    // Random Trader = purely random
+                    // Chartist = random and conditional
+
+                    cash = cash - electricityCost(agentTime); // TODO when to call?
+                    numBitcoin = numBitcoin + minedBitcoinPerMiner(agentTime); // TODO: when to call?
+                }
+
+            }
 
         // Only process when the agent is active
         if (enterMarket) {
             if (phaseIs("passive")) {
                 for (int i = 0; i < x.getLength(); i++)
                     if (messageOnPort(x, "inBitcoinPrice", i)) {
-                        holdIn("updatePrice", 0);
+                        holdIn("updatePrice", updatePriceTime);
+
                     } else if (messageOnPort(x, "inTransactions", i)) {
-                        holdIn("updateWallet", 0);
+                        holdIn("updateWallet", updateWalletTime);
+
                     }
             }
 
-            if (phaseIs("passive")) {
+            // If a transaction is received while updating price, transaction is placed in
+            // queue
+
+            if (phaseIs("updatePrice")) {
+                for (int i = 0; i < x.getLength(); i++)
+                    if (messageOnPort(x, "inTransactions", i)) {
+                        transaction = x.getValOnPort("inTransaction", i);
+                        agentQ.add(transaction);
+                    }
+
+                transaction = (entity) agentQ.first();
+            }
+
+            // If a price is received while updating wallet, price is placed in queue
+
+            if (phaseIs("updateWallet")) {
                 for (int i = 0; i < x.getLength(); i++)
                     if (messageOnPort(x, "inBitcoinPrice", i)) {
-                        holdIn("updatingPrice", 0);
+                        price = x.getValOnPort("inBitcoinPrice", i);
+                        agentQ.add(price);
                     }
+
+                price = (entity) agentQ.first();
             }
         }
     }
 
     public void deltint() {
-        passivate();
+
+        agentQ.remove();
+
+        if ((phaseIs("updateWallet")) && !agentQ.isEmpty()) {
+            price = (entity) agentQ.first(); // TODO: Does this begin updating price?
+            holdIn("updatePrice", updatePriceTime);
+        } else if ((phaseIs("updatePrice")) && !agentQ.isEmpty()) {
+            transaction = (entity) agentQ.first(); // TODO: Does this begin updating wallet?
+            holdIn("updateWallet", updateWalletTime);
+        } else
+            passivate();
 
         // Wake up agent to enter market
-        if ((enterMarket == false) && enterToMarket(sigma)) {
+        if ((enterMarket == false) && enterToMarket(marketTime)) {
             enterMarket = true;
-            this.numBitcoin = getInitialBitcoins(sigma);
+            
+            enterMarketTime = getEnterMarketTime(marketTime);
+            
+            this.numBitcoin = getInitialBitcoins(marketTime);
             this.cash = 5 * this.numBitcoin;
-            this.type = determineAgentType(sigma);
+            this.type = determineAgentType(marketTime);
+            minerDecisionTime = decisionTime(agentTime);
+            numBitcoinSell = 0;
+            numBitcoinBuy = 0;
+            sellLimitPrice = 0;
+            buyLimitPrice = 0;
         }
 
         // ************************ Miner Functions***********
@@ -94,18 +201,22 @@ public class Agent extends ViewableAtomic {
         // Bitcoins mined per day
         // An amount of time to make a decision to buy and/or sell hardware
 
-        if (AgentType.MINER != null) {
-            cash = cash - electricityCost(sigma);
-            numBitcoin = numBitcoin + minedBitcoinPerMiner(sigma);
+        if (type == AgentType.MINER) {
 
             if (cash > 0 && numBitcoin > 0) {
-                if (phaseIs("passive") && sigma == sigma + decisionTime(sigma)) {
+                if (phaseIs("passive") && agentTime == minerDecisionTime) {
                     // purchase hardware
 
                     holdIn("issueSellOrder", 0);
+                    buyHardware = true; // TODO: we might want to add this in the order message to tell hash rate to
+                                        // update
+
+                    numBitcoinSell = numBitcoinSell();
+                    sellLimitPrice = sellLimitPrice();
+                    expirationTime = expirationTime(marketTime);
 
                     double hashRate = 0;
-                    hashRate = hashRate + minerHashRate(sigma);
+                    hashRate = hashRate + minerHashRate(sigma); // TODO: external function receive transaction
 
                     // cash = cash - (cash * percentCashForHardware(sigma));
                     // numBitcoin = numBitcoin - (numBitcoin *
@@ -113,16 +224,86 @@ public class Agent extends ViewableAtomic {
                     // These values must be extracted from Transaction messages
 
                 }
-
             }
+
             if (phaseIs("passive") && cash <= 0) {
                 // issue sell order
 
-                holdIn("issueSellOrder", 20);
+                holdIn("issueSellOrder", 0);
+                buyHardware = false;
+                numBitcoinSell = numBitcoinSell();
+                sellLimitPrice = sellLimitPrice();
+                expirationTime = expirationTime(marketTime); // TODO: I think this is model time, because it goes to
+                                                            // OrderBook
             }
         }
+
+        // ************* END Miner Functions **************************
+
+        // *************** Random Trader Functions ***********************
+        // Random Traders issue orders randomly
+
+        if (phaseIs("passive") && type == AgentType.RANDOM_TRADER && issueOrder() == true) {
+
+            Random r = new Random();
+            double result = r.nextDouble(); // 0.0 to 1.0
+
+            // Issue Buy order
+            if (result > .5 && cash > 0) {
+                holdIn("issueBuyOrder", 0);
+                numBitcoinBuy = numBitcoinBuy();
+                buyLimitPrice = buyLimitPrice();
+                expirationTime = expirationTime(marketTime);
+            }
+
+            // Issue Sell order
+            if (result < .5) {
+                holdIn("issueSellOrder", 0);
+                numBitcoinSell = numBitcoinSell();
+                sellLimitPrice = sellLimitPrice();
+                expirationTime = expirationTime(marketTime);
+            }
+
+        }
+
+        // ******************Chartist Functions ******************************
+        // Chartist issues orders conditionally
+
+        if (phaseIs("passive") && type == AgentType.CHARTIST && issueOrder() == true
+                && agentTime == chartistOrderTime) {
+
+            double Threshold = getThreshold(agentTime);
+
+            // Issue Buy order
+            if (Threshold > 0.01) { // TODO: Need to figure out how to get threshold only for time window
+                holdIn("issueBuyOrder", 0);
+                numBitcoinBuy = numBitcoinBuy();
+                buyLimitPrice = buyLimitPrice();
+                expirationTime = expirationTime(marketTime);
+            }
+
+            // Issue Sell order
+            if (Threshold < 0.01) {
+                holdIn("issueSellOrder", 0);
+                numBitcoinSell = numBitcoinSell();
+                sellLimitPrice = sellLimitPrice();
+                expirationTime = expirationTime(marketTime);
+            }
+        }
+
     }
 
+    // ************* End Deltint **********************
+
+    private int getEnterMarketTime(int t) {
+        // Gets the time that the agent enters the market
+        
+        int presentMarketTime = enterMarketTime;
+        
+        return presentMarketTime;
+        
+    }
+    
     private AgentType determineAgentType(double t) {
         // Probability of an agent to be a Miner:
         // pM(t) = a * e^(b*t)
@@ -183,7 +364,7 @@ public class Agent extends ViewableAtomic {
 
     // ************************************ MINER **********
 
-    private double decisionTime(double t) {
+    private int decisionTime(int t) {
         // Time that miners take to decide to buy new hardware units
         // dT = t+int(60+N(mu, sig))
         // Rounds to the nearest integer
@@ -192,7 +373,7 @@ public class Agent extends ViewableAtomic {
         Random r = new Random();
         double var = (double) Math.round(r.nextGaussian() * 6);
 
-        return (t + 60 + var);
+        return (int) (t + 60 + var);
     }
 
     private double percentCashForHardware(double t) {
@@ -273,13 +454,13 @@ public class Agent extends ViewableAtomic {
         // ri(t)=sum(riu(t))
 
         double riu;
-        if (t == 0) {
+        if (agentTime == 0 && id > 160) { // agent time
             riu = newUnitHashRate(t);
         } else
             riu = marketUnitHashRate(t);
 
         double initMinerRi;
-        if (t == 0) {
+        if (marketTime == 0 && id <= 160) { // model time
             initMinerRi = 0.0173;
         } else
             initMinerRi = 0;
@@ -301,7 +482,7 @@ public class Agent extends ViewableAtomic {
 
     private double electricityCost(double t) {
         // i-th electricity cost at time t --> $/day
-
+        // called every day
         final double eRate = 1.4 / 1000;
 
         final double riu = marketUnitHashRate(t);
@@ -317,6 +498,7 @@ public class Agent extends ViewableAtomic {
 
     private double totalHashRate(double t) {
         // Hashing capacity of the whole population of Miners Nm at time t
+        // called every day
 
         final double ri = minerHashRate(t);
         double sumRi = 0;
@@ -343,7 +525,81 @@ public class Agent extends ViewableAtomic {
 
     // ************************* End Miner *********
 
+    // **************** Chartist *******************
+
+    private int timeWindow(int t) {
+        // Window of time the i-th Chartist issues Orders
+        // Characterized by a normal distribution
+        // ave = 20, stdv = 1
+
+        Random r = new Random();
+        double window = Math.round(r.nextGaussian() + 20);
+
+        return (int) (t + window);
+    }
+
+    private double getThreshold(int t) {
+        // Buy when price is rising --> Thc > 0.01
+        // Sell when price is falling --> Thc < 0.01
+        // Thc --> relative price variation
+
+        double Thc;
+        Thc = 0;
+
+        double lastPrice = bitcoinPrice;
+        double relativePrice;
+        relativePrice = lastPrice / bitcoinPrice; // TODO: use P1/P2, P2/P3, ..., Pn-1/Pn
+
+        if (t < chartistOrderTime) {
+            double sumRelativePrice = 0;
+
+            sumRelativePrice = 0;
+            sumRelativePrice = sumRelativePrice + relativePrice;
+
+            double mean = sumRelativePrice / timeWindow(t);
+            chartistSumOfSquare += Math.pow(bitcoinPrice - mean, 2);
+
+            Thc = chartistSumOfSquare / timeWindow(t) - 1;
+
+            // TODO: This should be a calculation of relative price variation in
+            // timeWindow()
+        }
+        return Thc;
+    }
+
+    // ***************** End Chartist *********************
+
     // *************** Buy and Sell Orders **********
+
+    private double activeTraderProb() {
+        // Each type of trader has a different probability of being active in the market
+        // Miner is active during decision making, defined above
+        // Random trader = 0.1
+        // Chartist = 0.5 and if price variation is above/below threshold
+
+        double Pact = 0;
+        if (type == AgentType.RANDOM_TRADER) {
+            Pact = 0.1;
+        } else if (type == AgentType.CHARTIST) {
+            Pact = 0.5;
+        }
+
+        return (Pact);
+    }
+
+    private boolean issueOrder() {
+        // Activates traders to issue orders
+        // Random trader called every day
+
+        Random r = new Random();
+
+        double result = r.nextDouble(); // 0.0 to 1.0
+
+        if (type == AgentType.RANDOM_TRADER && result < activeTraderProb()) {
+            return true;
+        } else
+            return false;
+    }
 
     private double marketOrderProb() {
         // Market order trades at best price
@@ -354,12 +610,12 @@ public class Agent extends ViewableAtomic {
         // Chartist Plim = 0.7
 
         double Plim = 0;
-        if (AgentType.MINER != null) {
+        if (type == AgentType.MINER) {
             Plim = 1;
         }
-        if (AgentType.RANDOM_TRADER != null) {
+        if (type == AgentType.RANDOM_TRADER) {
             Plim = 0.2;
-        } else if (AgentType.CHARTIST != null) {
+        } else if (type == AgentType.CHARTIST) {
             Plim = 0.7;
         }
 
@@ -387,26 +643,27 @@ public class Agent extends ViewableAtomic {
 
     private double numBitcoinSell() {
         // sa = Number of Bitcoin in sell order
+        // bsi = Available Bitcoins to sell
         // Random variable from lognormal distribution
         // Random Trader --> ave = 0.25, stdv = 0.2
         // Chartist --> ave 0.4, stdv = 0.2
 
         Random r = new Random();
         double beta = 0;
-        if (AgentType.CHARTIST != null) {
+        if (type == AgentType.CHARTIST) {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.25);
         }
-        if (AgentType.RANDOM_TRADER != null) {
+        if (type == AgentType.RANDOM_TRADER) {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.4);
         }
 
         double sa;
-        // TODO: bsi = numBitcoin - numBitcoin in pending Transactions
+        // TODO: define pendingBitcoin as Bitcoin still in OrderBook
 
-        double bsi = numBitcoin; // - numBitcoin in prending Transactions
-        
-        if (AgentType.MINER != null) {
-            sa = bsi * percentBitcoinCashForHardware(sigma);
+        double bsi = numBitcoin - pendingBitcoin;
+
+        if (type == AgentType.MINER) {
+            sa = bsi * percentBitcoinCashForHardware(agentTime);
 
         } else
             sa = bsi * beta;
@@ -415,8 +672,6 @@ public class Agent extends ViewableAtomic {
     }
 
     // ****************** End Sell **************************
-    
-    
 
     // ******************* Buy *************************
 
@@ -445,26 +700,43 @@ public class Agent extends ViewableAtomic {
 
         Random r = new Random();
         double beta = 0;
-        if (AgentType.CHARTIST != null) {
+        if (type == AgentType.CHARTIST) {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.25);
         }
-        if (AgentType.RANDOM_TRADER != null) {
+        if (type == AgentType.RANDOM_TRADER) {
             beta = (double) Math.log(r.nextGaussian() * 0.2 + 0.4);
         }
 
         double ba;
-        // TODO: cbi = cash - cash in pending Transactions
+        // cbi = cash - cash in pending Transactions
+        // cbi = cash available to buy Bitcoins
+        // TODO: Define pendingCash as cash still in OrderBook
 
-        double cbi = cash; // - cash in pending Transactions 
-        
-        if (AgentType.MINER != null) {
+        double cbi = cash - pendingCash; // - cash in pending Transactions
+
+        if (type == AgentType.MINER) {
             ba = 0;
         } else
             ba = cbi * beta / bitcoinPrice;
 
         return (ba);
     }
-    
+
+    private int expirationTime(int t) {
+        // Time for an Order to be completed before it expires
+
+        Random r = new Random();
+        int tStep = 0;
+        tStep = (int) Math.log(r.nextGaussian() * 0.2 + 0.25);
+
+        if (type == AgentType.RANDOM_TRADER) {
+            return (t + tStep);
+        } else if (type == AgentType.CHARTIST) {
+            return 1;
+        } else
+            return (int) INFINITY;
+    }
+
     // ************* End Buy and Sell Orders *************************************
 
     public void deltcon(double e, message x) {
@@ -474,19 +746,28 @@ public class Agent extends ViewableAtomic {
     }
 
     public message out() {
-        // TODO: Messages need to have id, buy/sell, limit price, and number of bitcoin,
-        // expiration date
+        // Messages need to have id, buy/sell, limit price, and number of bitcoin,
+        // TODO: expiration date
 
         message m = new message();
 
+        // Sell order message
         content con1 = makeContent("OrderPort",
-                new OrderEntity(OrderType.SELL, id, numBitcoinSell(), sellLimitPrice(), 0));
+                new OrderEntity(new Order(OrderType.SELL, id, numBitcoinSell, sellLimitPrice, expirationTime)));
 
+        // Buy order message
         content con2 = makeContent("OrderPort",
-                new OrderEntity(OrderType.BUY, id, numBitcoinBuy(), buyLimitPrice(), 0));
+                new OrderEntity(new Order(OrderType.BUY, id, numBitcoinBuy(), buyLimitPrice(), 0)));
 
         if (phaseIs("issueSellOrder")) {
-            m.add(con1);
+            if (type == AgentType.MINER) {
+                minerDecisionTime = decisionTime(agentTime); // Schedules next decision time for miner
+                m.add(con1);
+            }
+            if (type == AgentType.CHARTIST) {
+                chartistOrderTime = timeWindow(agentTime);
+            } else
+                m.add(con1);
         }
 
         if (phaseIs("issueBuyOrder")) {
