@@ -8,7 +8,10 @@ import view.modeling.ViewableAtomic;
 
 public class Transducer extends ViewableAtomic {
 
-    protected int modelTime;
+    protected Queue hashRateQ;
+    
+    protected Double modelTime;
+    
 
     public Transducer() {
         this("Transducer", 1856);
@@ -22,9 +25,10 @@ public class Transducer extends ViewableAtomic {
 
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
+        addOutport("outTime");
         addOutport("out");
 
-        this.modelTime = modelTime;
+        this.modelTime = (double) modelTime;
     }
 
     public void initialize() {
@@ -34,8 +38,10 @@ public class Transducer extends ViewableAtomic {
     }
 
     public void deltext(double e, message x) {
+        modelTime = modelTime + e;
         Continue(e);
 
+       
         if (phaseIs("passive")) {
             for (int i = 0; i < x.getLength(); i++)
 
@@ -45,7 +51,7 @@ public class Transducer extends ViewableAtomic {
                     // Remove old and hash rate
                     // Sum current total hash rate
 
-                } else if (messageOnPort(x, "inNumBitcoin", i)) {
+                } else if (messageOnPort(x, "inNumBitcoin", i)) { //**** may not need *****
                     holdIn("updateNumBitcoin", 0);
                     // TODO: extract current number of Bitcoin from message
                     // Remove old and number of Bitcoin
@@ -55,6 +61,7 @@ public class Transducer extends ViewableAtomic {
     }
 
     public void deltint() {
+        modelTime = modelTime + sigma;
         passivate();
     }
 
@@ -71,10 +78,12 @@ public class Transducer extends ViewableAtomic {
         content con1 = makeContent("totHashRate", new entity()); // TODO: message for totHashRate
         content con2 = makeContent("totNumBitcoin", new entity()); // TODO: message for totNumBitcoin
         content con3 = makeContent("out", new entity("Stop"));
+        content con4 = makeContent("outTime", new entity(modelTime.toString()));
 
         m.add(con1);
         m.add(con2);
         m.add(con3);
+        m.add(con4);
 
         return m;
     }

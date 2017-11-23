@@ -16,7 +16,7 @@ public class ExpFrame extends ViewableDigraph {
     public ExpFrame(String name) {
         super(name);
 
-        ViewableAtomic Generator = new Generator("Generator", 0.0649);
+        ViewableAtomic Generator = new Generator("Generator", 0.0649, 23274, 0);
         ViewableAtomic Transducer = new Transducer("Transducer", 1856);
 
         add(Generator);
