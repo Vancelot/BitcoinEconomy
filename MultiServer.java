@@ -34,10 +34,9 @@ public class MultiServer extends ViewableDigraph {
         addInport("inBitcoinPrice");
         addInport("inTimer");
 
-        addInport("outTransactions");
-        addInport("outBitcoinPrice");
         addInport("outOrders");
-        addInport("outTimer");
+        addInport("outHashRates");
+        addInport("outBitcoins");
 
         MultiServerCoord co = new MultiServerCoord("MultiSco");
         add(co);
@@ -52,13 +51,16 @@ public class MultiServer extends ViewableDigraph {
         Iterator i = getComponents().iterator();
         while (i.hasNext()) {
             entity ent = (entity) i.next();
-            devs comp = (devs) ent;
+            devs agent = (devs) ent;
             if (!ent.equals(co)) {
-                addCoupling(co, "outTransactions", comp, "inTransactions"); // use name for routing
-                addCoupling(co, "outBitcoinPrice", comp, "inBitcoinPrice"); // use name for routing
-                addCoupling(co, "outTimer", comp, "inTimer"); // use name for routing
+                addCoupling(co, "outTransactions", agent, "inTransactions"); // use name for routing
+                addCoupling(co, "outBitcoinPrice", agent, "inBitcoinPrice"); // use name for routing
+                addCoupling(co, "outTimer", agent, "inTimer"); // use name for routing
 
-                addCoupling(comp, "outOrders", co, "inOrders");
+                addCoupling(agent, "outOrders", co, "inOrders");
+                
+                addCoupling(agent, "outHashRates", this, "outHashRates"); // This port will go to Transduder
+                addCoupling(agent, "outBitcoins", this, "outBitcoins"); // This port will go to Transduder
             }
 
         }
@@ -66,10 +68,7 @@ public class MultiServer extends ViewableDigraph {
         addCoupling(this, "inBitcoinPrice", co, "inBitcoinPrice");
         addCoupling(this, "inTimer", co, "inTimer");
 
-        addCoupling(co, "outTransactions", this, "outTransactions");
-        addCoupling(co, "outBitcoinPrice", this, "outBitcoinPrice");
         addCoupling(co, "outOrders", this, "outOrders");
-        addCoupling(co, "outTimer", this, "outTimer");
 
         initialize();
 
