@@ -8,23 +8,21 @@ import view.simView.*;
 
 public class MultiServerCoord extends ViewableAtomic {
 
-    protected Queue procs;
-    protected Queue jobs;
-    // protected proc pcur;
-    protected message yMessage;
+    protected Queue transactionQ;
+    protected Queue orderQ;
+
+    protected entity bitcoinPriceMessage;
+    protected entity timeMessage;
+    
+    public MultiServerCoord() {
+        this("MultiServerCoord");
+    }
 
     public MultiServerCoord(String name) {
         super(name);
 
-        jobs = new Queue();
-        procs = new Queue();
-    }
-
-    public MultiServerCoord() {
-        super("MultiServerCoord");
-
-        jobs = new Queue();
-        procs = new Queue();
+        transactionQ = new Queue();
+        orderQ = new Queue();
 
         addInport("inTransactions");
         addInport("inBitcoinPrice");
@@ -32,34 +30,27 @@ public class MultiServerCoord extends ViewableAtomic {
         addInport("inTimer");
 
         // TODO - add test inputs
-        
+
         addInport("outTransactions");
         addInport("outBitcoinPrice");
         addInport("outOrders");
         addInport("outTimer");
-
-        // initialize();
     }
 
     public void initialize() {
         phase = "passive";
         sigma = INFINITY;
-        //job = null;
+
         super.initialize();
-        ;
+        
+        bitcoinPriceMessage = null;
+        timeMessage = null;
     }
 
     public void showState() {
         super.showState();
-        System.out.println("number of jobs: " + jobs.size());
-        System.out.println("number of procs: " + procs.size());
-    }
-
-    // protected void add_procs(proc p){ //BPZ 99 this cause problem
-    protected void add_procs(devs p) {
-
-        procs.add(p);
-        // pcur = p;
+        System.out.println("number of Orders: " + orderQ.size());
+        System.out.println("number of Transactions: " + transactionQ.size());
     }
 
     public void deltext(double e, message x) {
@@ -67,64 +58,60 @@ public class MultiServerCoord extends ViewableAtomic {
         Continue(e);
 
         if (phaseIs("passive")) {
-            //for (int i = 0; i < x.size(); i++)
-                //if (messageOnPort(x, "setup", i))
-                    // TODO add_procs(new proc("p", 1000));
-        }
+            for (int i = 0; i < x.size(); i++) {
+                if (messageOnPort(x, "inTransactions", i)) {
+                    entity val = x.getValOnPort("inTransactions", i);
+                    transactionQ.add(val);
 
-        if (phaseIs("passive")) {
-            yMessage = new message();
-            for (int i = 0; i < x.size(); i++)
-                if (messageOnPort(x, "in", i)) {
-                    //job = x.getValOnPort("in", i);
+                    holdIn("send_out", 0);
+                } else if (messageOnPort(x, "inBitcoinPrice", i)) {
+                    entity bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
 
-                    if (!procs.isEmpty()) {
-                        entity pcur = (entity) procs.first();
-                        procs.remove();
-                        //yMessage.add(makeContent("y", new Pair(pcur, job)));
-                        holdIn("send_y", 0);
-                    }
+                    holdIn("send_out", 0);
+                } else if (messageOnPort(x, "inTimer", i)) {
+                    entity timeMessage = x.getValOnPort("inTimer", i);
+
+                    holdIn("send_out", 0);
+                } else if (messageOnPort(x, "inOrders", i)) {
+                    entity val = x.getValOnPort("inOrders", i);
+                    orderQ.add(val);
+
+                    holdIn("send_out", 0);
                 }
-        }
-        // (proc,job) Pairs returned on port x
-        // always accept so that no processor is lost
-
-        for (int i = 0; i < x.size(); i++)
-            if (messageOnPort(x, "x", i)) {
-                entity val = x.getValOnPort("x", i);
-                Pair pr = (Pair) val;
-                procs.add(pr.getKey());
-                entity jb = (entity) pr.getValue();
-                jobs.add(jb);
             }
-        // output completed jobs at earliest opportunity
-        if (phaseIs("passive") && !jobs.isEmpty())
-            holdIn("send_out", 0);
-
+        }
     }
 
     public void deltint() {
-        if (phaseIs("send_out")) {
-            jobs = new Queue();
-            passivate();
-        }
-        // output completed jobs at earliest opportunity
-
-        else if (phaseIs("send_y") && !jobs.isEmpty())
-            holdIn("send_out", 0);
-        else
             passivate();
     }
 
     public message out() {
         message m = new message();
-        if (phaseIs("send_out"))
-            for (int i = 0; i < jobs.size(); i++) {
-                entity job = (entity) jobs.get(i);
-                m.add(makeContent("out", job));
+        if (phaseIs("send_out")) {
+            for (int i = 0; i < transactionQ.size(); i++) {
+                entity transactionEntity = (entity) transactionQ.get(i);
+                m.add(makeContent("outTransactions", transactionEntity));
             }
-        else if (phaseIs("send_y"))
-            m = yMessage;
+            transactionQ = new Queue();
+            
+            if (bitcoinPriceMessage != null) {
+                m.add(makeContent("outBitcoinPrice", bitcoinPriceMessage));
+                bitcoinPriceMessage = null;
+            }
+            
+            if (timeMessage != null) {
+                m.add(makeContent("outTimer", timeMessage));
+                timeMessage = null;
+            }
+            
+            for (int i = 0; i < orderQ.size(); i++) {
+                entity orderEntity = (entity) orderQ.get(i);
+                m.add(makeContent("outOrders", orderEntity));
+            }
+            orderQ = new Queue();
+        }
+
         return m;
     }
 
