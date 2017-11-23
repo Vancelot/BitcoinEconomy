@@ -17,7 +17,7 @@ public class Generator extends ViewableAtomic {
     protected double transPriceOfBitcoin;
     protected double transNumBitcoin;
     protected double numBitcoin;
-    protected double marketPrice;
+    protected Double marketPrice;
 
     protected double updatePriceTime;
 
@@ -50,25 +50,35 @@ public class Generator extends ViewableAtomic {
         if (phaseIs("passive")) {
             for (int i = 0; i < x.getLength(); i++)
                 if (messageOnPort(x, "inTransaction", i)) {
-                    TransactionEntity message = (TransactionEntity) x.getValOnPort("InOrders", i);
+
+                    // Retrieve Transaction
+                    
+                    TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
                     Transaction order = message.getv();
+
                     // Extract price of Bitcoin from Transaction
+                   
                     transPriceOfBitcoin = order.price;
+
                     // Extract number of Bitcoin from Transaction
-                    transNumBitcoin = order.amount; //TODO: add number of Bitcoin to Transaction 
-                            holdIn("updatePrice", updatePriceTime);
+                    
+                    Order aBuyOrder = order.buyOrder;
+                    double amount = aBuyOrder.amount;
+                    transNumBitcoin = amount;
+                   
+                    holdIn("updatePrice", updatePriceTime);
                 }
         }
 
         // TODO: put messages in queue
         if (phaseIs("updatePrice")) {
-        for (int i = 0; i < x.getLength(); i++)
-            if (messageOnPort(x, "inTransaction", i)) {
-                transaction = x.getValOnPort("inTransaction", i);
-                transQ.add(transaction);
-            }
-        
-        transaction = (entity)transQ.first();
+            for (int i = 0; i < x.getLength(); i++)
+                if (messageOnPort(x, "inTransaction", i)) {
+                    transaction = x.getValOnPort("inTransaction", i);
+                    transQ.add(transaction);
+                }
+
+            transaction = (entity) transQ.first();
         }
     }
 
@@ -82,14 +92,15 @@ public class Generator extends ViewableAtomic {
         if ((phaseIs("updatePrice")) && !transQ.isEmpty()) {
             transaction = (entity) transQ.first(); // TODO: Does this begin updating price?
             holdIn("updatePrice", updatePriceTime);
+           
+            double weightedSumOfPrice = 0;
+            weightedSumOfPrice = (numBitcoin * marketPrice) + (transNumBitcoin * transPriceOfBitcoin);
+
+            marketPrice = weightedSumOfPrice / numBitcoin + transNumBitcoin;
+
+            
         } else
             passivate();
-
-        double weightedSumOfPrice = 0;
-        // TODO: Extract number of Bitcoin from transaction message
-        weightedSumOfPrice = (numBitcoin * marketPrice) + (transNumBitcoin * transPriceOfBitcoin);
-
-        marketPrice = weightedSumOfPrice / numBitcoin + transNumBitcoin;
 
     }
 
@@ -104,7 +115,7 @@ public class Generator extends ViewableAtomic {
 
         message m = new message();
 
-        content con = makeContent("outPriceBitcoin", new entity("priceBitcoin")); // TODO: message needs to send the
+        content con = makeContent("outPriceBitcoin", new entity(marketPrice.toString())); // TODO: message needs to send the
                                                                                   // price of Bitcoin
         if (phaseIs("updatePrice")) {
             m.add(con);

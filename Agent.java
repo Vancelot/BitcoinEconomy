@@ -61,12 +61,11 @@ public class Agent extends ViewableAtomic {
     protected int updateWalletTime;
 
     public Agent() {
-        this("Agent", 0, 0, 0, false, 0, 0);
+        this(AgentType.NONE, 0, 0, 0, false);
     }
 
-    public Agent(String name, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket, int updatePriceTime,
-            int updateWalletTime) {
-        super(name);
+    public Agent(AgentType none, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
+        super();
 
         agentQ = new Queue();
 
@@ -85,8 +84,6 @@ public class Agent extends ViewableAtomic {
         this.enterMarket = enterMarket;
         this.chartistSumOfSquare = 0;
         this.chartistOrderTime = 0;
-        this.updatePriceTime = updatePriceTime;
-        this.updateWalletTime = updateWalletTime;
     }
 
     public void initialize() {
@@ -98,6 +95,8 @@ public class Agent extends ViewableAtomic {
         this.marketTime = 0;
         this.agentTime = 0;
         this.chartistOrderTime = timeWindow(agentTime);
+        this.updatePriceTime = 0;
+        this.updateWalletTime = 0;
     }
 
     public void deltext(double e, message x) {
@@ -169,11 +168,9 @@ public class Agent extends ViewableAtomic {
 
         agentQ.remove();
 
-        if ((phaseIs("updateWallet")) && !agentQ.isEmpty()) {
-            price = (entity) agentQ.first(); // TODO: Does this begin updating price?
+        if ((phaseIs("updateWallet")) && !agentQ.isEmpty() && price == (entity) agentQ.first()) { // TODO: Does this begin updating price?
             holdIn("updatePrice", updatePriceTime);
-        } else if ((phaseIs("updatePrice")) && !agentQ.isEmpty()) {
-            transaction = (entity) agentQ.first(); // TODO: Does this begin updating wallet?
+        } else if ((phaseIs("updatePrice")) && !agentQ.isEmpty() && transaction == (entity) agentQ.first()) { // TODO: Does this begin updating wallet? 
             holdIn("updateWallet", updateWalletTime);
         } else
             passivate();
