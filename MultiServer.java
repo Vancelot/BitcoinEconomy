@@ -3,6 +3,7 @@ package BitcoinEcon;
 import java.awt.*;
 import java.util.*;
 
+import BitcoinEcon.Agent.AgentType;
 import GenCol.*;
 
 import model.modeling.*;
@@ -14,48 +15,64 @@ import view.simView.*;
 
 public class MultiServer extends ViewableDigraph {
 
-    public MultiServer() {
-        this("multiserver", 2, 2);
+    private MultiServer() {
+        this("Multiserver", 0, 0, 0.0, 0.0);
     }
 
-    public MultiServer(String name, double proc_time, int size) {
+    public MultiServer(String name, int totalNumberTraders, int numberInitialTraders,
+            double initialBitcoinsInitialTraders, double initialBitcoinPrice) {
         super(name);
-        make(proc_time, size);
-        addTestInput("in", new entity("job"));
+        make(totalNumberTraders, numberInitialTraders, initialBitcoinsInitialTraders, initialBitcoinPrice);
+
+        // TODO - add test inputs
     }
 
-    private void make(double proc_time, int size) {
+    private void make(int totalNumberTraders, int numberInitialTraders, double initialBitcoinsInitialTraders,
+            double initialBitcoinPrice) {
 
-        addInport("in");
-        addOutport("out");
+        addInport("inTransactions");
+        addInport("inBitcoinPrice");
+        addInport("inTimer");
+
+        addInport("outOrders");
+        addInport("outHashRates");
+        addInport("outBitcoins");
 
         MultiServerCoord co = new MultiServerCoord("MultiSco");
         add(co);
 
-        for (int i = 1; i <= size; i++) {
-            Agent p = new Agent();//("processor_" + i, proc_time);
+        for (int i = 1; i <= totalNumberTraders; i++) {
+            Agent p = new Agent(AgentType.NONE, i, initialBitcoinsInitialTraders, initialBitcoinPrice, false);
             add(p);
             co.add_procs(p);
             p.setPreferredLocation(new Point(187, 22 + 80 * (i - 1)));
-
         }
 
         Iterator i = getComponents().iterator();
         while (i.hasNext()) {
             entity ent = (entity) i.next();
-            devs comp = (devs) ent;
+            devs agent = (devs) ent;
             if (!ent.equals(co)) {
-                addCoupling(co, "y", comp, "inName"); // use name for routing
-                addCoupling(comp, "outName", co, "x");
+                addCoupling(co, "outTransactions", agent, "inTransactions"); // use name for routing
+                addCoupling(co, "outBitcoinPrice", agent, "inBitcoinPrice"); // use name for routing
+                addCoupling(co, "outTimer", agent, "inTimer"); // use name for routing
+
+                addCoupling(agent, "outOrders", co, "inOrders");
+                
+                addCoupling(agent, "outHashRates", this, "outHashRates"); // This port will go to Transduder
+                addCoupling(agent, "outBitcoins", this, "outBitcoins"); // This port will go to Transduder
             }
 
         }
-        addCoupling(this, "in", co, "in");
-        addCoupling(co, "out", this, "out");
+        addCoupling(this, "inTransactions", co, "inTransactions");
+        addCoupling(this, "inBitcoinPrice", co, "inBitcoinPrice");
+        addCoupling(this, "inTimer", co, "inTimer");
+
+        addCoupling(co, "outOrders", this, "outOrders");
 
         initialize();
 
-        preferredSize = new Dimension(508, 32 + 80 * size);
+        preferredSize = new Dimension(508, 32 + 80 * totalNumberTraders);
         co.setPreferredLocation(new Point(-7, 20));
     }
 

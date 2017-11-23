@@ -13,20 +13,20 @@ public class Order implements Comparable<Order> {
                                   // transaction
                                   // by the Order book
     public double limitPrice; // The price to which a trader desires to conclude their transaction
-    public int expirationPeriod; // If the order is not fully satisfied it is removed from the book after
-                                 // expiration period
+    public int expirationTime; // If the order is not fully satisfied it is removed from the book after
+                                 // expiration time
 
     public Order() {
         this(OrderType.NONE, 0, 0.0, 0.0, 0);
     }
 
-    public Order(OrderType aOrderType, int aAgentId, double aAmount, double aLimitPrice, int aExpirationPeriod) {
+    public Order(OrderType aOrderType, int aAgentId, double aAmount, double aLimitPrice, int aExpirationTime) {
         this.type = aOrderType;
         this.agentId = aAgentId;
         this.amount = aAmount;
         this.residualAmount = aAmount; // Initial Residual Amount is always initialized to the Amount
         this.limitPrice = aLimitPrice;
-        this.expirationPeriod = aExpirationPeriod;
+        this.expirationTime = aExpirationTime;
     }
 
     @Override

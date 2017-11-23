@@ -26,11 +26,17 @@ public class MultiServerCoord extends ViewableAtomic {
         jobs = new Queue();
         procs = new Queue();
 
-        // CAUTION: start with port "setup" to test
+        addInport("inTransactions");
+        addInport("inBitcoinPrice");
+        addInport("inOrders");
+        addInport("inTimer");
 
-        addTestInput("setup", new entity(""));
-        addTestInput("in", new entity("val"));
-        //addTestInput("x", new Pair(new proc("p", 5000), new entity("val")));
+        // TODO - add test inputs
+        
+        addInport("outTransactions");
+        addInport("outBitcoinPrice");
+        addInport("outOrders");
+        addInport("outTimer");
 
         // initialize();
     }
