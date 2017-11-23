@@ -26,10 +26,12 @@ public class Market extends ViewableDigraph {
                 INITIAL_BITCOINS_OF_INITIAL_TRADERS, INITIAL_BITCOIN_PRICE);
         orderBook = new OrderBook();
 
-        addOutport("inBitcoinPrice");
-        addOutport("inTimer");
+        addInport("inBitcoinPrice");
+        addInport("inTimer");
 
         addOutport("outTransactions");
+        addOutport("outHashRates");
+        addOutport("outBitcoins");
 
         add(multiServer);
         add(orderBook); // Add the Model Book to the Market model
@@ -39,6 +41,9 @@ public class Market extends ViewableDigraph {
 
         addCoupling(multiServer, "outOrders", orderBook, "InOrders");
 
+        addCoupling(orderBook, "outTransactions", this, "outTransactions");
+        addCoupling(multiServer, "outHashRates", this, "outHashRates");
+        addCoupling(multiServer, "outBitcoins", this, "outBitcoins");
     }
 
     public static long now() {
