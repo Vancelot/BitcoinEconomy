@@ -52,21 +52,23 @@ public class Generator extends ViewableAtomic {
                 if (messageOnPort(x, "inTransaction", i)) {
 
                     // Retrieve Transaction
-                    
+
                     TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
                     Transaction order = message.getv();
 
                     // Extract price of Bitcoin from Transaction
-                   
+
                     transPriceOfBitcoin = order.price;
 
                     // Extract number of Bitcoin from Transaction
-                    
+
                     Order aBuyOrder = order.buyOrder;
-                    double amount = aBuyOrder.amount;
-                    transNumBitcoin = amount;
-                   
+                    transNumBitcoin = aBuyOrder.amount;
+
                     holdIn("updatePrice", updatePriceTime);
+
+                } else if (messageOnPort(x, "Stop", i)) {
+                    phase = "finishing";
                 }
         }
 
@@ -87,18 +89,17 @@ public class Generator extends ViewableAtomic {
         // Weighted number of transactions --> weights
         // priceBitcoin = sumOfPrice / numBitcoin
 
-        transQ.remove();
-
         if ((phaseIs("updatePrice")) && !transQ.isEmpty()) {
             transaction = (entity) transQ.first(); // TODO: Does this begin updating price?
             holdIn("updatePrice", updatePriceTime);
-           
+
+            transQ.remove();
+
             double weightedSumOfPrice = 0;
             weightedSumOfPrice = (numBitcoin * marketPrice) + (transNumBitcoin * transPriceOfBitcoin);
 
             marketPrice = weightedSumOfPrice / numBitcoin + transNumBitcoin;
 
-            
         } else
             passivate();
 
@@ -115,8 +116,9 @@ public class Generator extends ViewableAtomic {
 
         message m = new message();
 
-        content con = makeContent("outPriceBitcoin", new entity(marketPrice.toString())); // TODO: message needs to send the
-                                                                                  // price of Bitcoin
+        content con = makeContent("outPriceBitcoin", new entity(marketPrice.toString())); // TODO: message needs to send
+                                                                                          // the
+        // price of Bitcoin
         if (phaseIs("updatePrice")) {
             m.add(con);
         }
