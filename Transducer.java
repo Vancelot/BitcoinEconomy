@@ -9,7 +9,7 @@ import view.modeling.ViewableAtomic;
 public class Transducer extends ViewableAtomic {
 
     protected Queue hashRateQ;
-   
+
     protected Double totHashRate;
 
     protected Double totNumBitcoin;
@@ -24,9 +24,9 @@ public class Transducer extends ViewableAtomic {
         super(name);
 
         hashRateQ = new Queue();
-        
+
         addInport("inHashRate");
-        
+
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
         addOutport("outTime");
@@ -53,42 +53,42 @@ public class Transducer extends ViewableAtomic {
                 if (messageOnPort(x, "inHashRate", i)) {
                     entity hashRate;
                     hashRate = x.getValOnPort("inHashRate", i);
-                    
+
                     hashRateQ.add(hashRate);
-                    
+
                     // TODO: extract current hash rate from message
                     // Remove old and hash rate
                     // Sum current total hash rate
 
-                } 
+                }
         }
     }
 
     public void deltint() {
-        
+
         totHashRate = 0.0;
         entity hashRate;
-        
-        while (!hashRateQ.isEmpty()){
-            
-           hashRate = (entity) hashRateQ.first();
-           double hRate = Double.parseDouble(hashRate.toString());
-           totHashRate = totHashRate + hRate;
-           hashRateQ.remove(hashRate);          
-            
-        }
-        
-        modelTime = modelTime + sigma;
-        
-        holdIn("outputTime", 1);
-        
+
         passivate();
+
+        while (!hashRateQ.isEmpty()) {
+
+            hashRate = (entity) hashRateQ.first();
+            double hRate = Double.parseDouble(hashRate.toString());
+            totHashRate = totHashRate + hRate;
+            hashRateQ.remove(hashRate);
+
+        }
+
+        modelTime = modelTime + sigma;
+
+        holdIn("outputTime", 1);
 
         if (modelTime < 853) {
 
             totNumBitcoin = modelTime * 72;
         } else
-            
+
             totNumBitcoin = modelTime * 36;
     }
 
@@ -103,7 +103,8 @@ public class Transducer extends ViewableAtomic {
         message m = new message();
 
         content con1 = makeContent("totHashRate", new entity(totHashRate.toString())); // TODO: message for totHashRate
-        content con2 = makeContent("totNumBitcoin", new entity(totNumBitcoin.toString())); // TODO: message for totNumBitcoin
+        content con2 = makeContent("totNumBitcoin", new entity(totNumBitcoin.toString())); // TODO: message for
+                                                                                           // totNumBitcoin
         content con3 = makeContent("out", new entity("Stop"));
         content con4 = makeContent("outTime", new entity(modelTime.toString()));
 

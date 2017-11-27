@@ -128,27 +128,36 @@ public class OrderBook extends ViewableAtomic {
             double price = determinePrice(buyList.get(0).limitPrice, sellList.get(0).limitPrice);
             double buyerResidualAmountInCash = buyList.get(0).residualAmount;
             double sellerResidualAmountInCash = sellList.get(0).residualAmount * price;
-
+            double bitcoinAmount = 0;
+            
             // Start to execute order: compare orders in terms of Residual Amount in cash
             if (buyerResidualAmountInCash == sellerResidualAmountInCash) {
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price);
+                bitcoinAmount = sellList.get(0).residualAmount;
+                buyList.get(0).residualAmount = 0;
+                sellList.get(0).residualAmount = 0;
+                
+                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
                 sellList.remove(0); // This sell order is completed
                 buyList.remove(0); // This buy order is completed
             } else if (buyerResidualAmountInCash > sellerResidualAmountInCash) {
+                bitcoinAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
                 buyList.get(0).residualAmount = buyerResidualAmountInCash - sellerResidualAmountInCash;
-
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price);
+                sellList.get(0).residualAmount = 0;
+                
+                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
                 sellList.remove(0); // This sell order is completed
             } else {
+                bitcoinAmount = sellList.get(0).residualAmount - buyerResidualAmountInCash / price;
                 sellList.get(0).residualAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
-
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price);
+                buyList.get(0).residualAmount = 0;
+                
+                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
@@ -160,7 +169,7 @@ public class OrderBook extends ViewableAtomic {
     private void removeExpiredBuyOrders() {
         for (int counter = 0; counter < buyList.size(); counter++) {
             if (time >= buyList.get(counter).expirationTime) {
-                Transaction transaction = new Transaction(buyList.get(counter), null, 0);
+                Transaction transaction = new Transaction(buyList.get(counter), null, 0, 0);
                 TransactionEntity transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
@@ -172,7 +181,7 @@ public class OrderBook extends ViewableAtomic {
     private void removeExpiredSellOrders() {
         for (int counter = 0; counter < sellList.size(); counter++) {
             if (time >= sellList.get(counter).expirationTime) {
-                Transaction transaction = new Transaction(null, sellList.get(counter), 0);
+                Transaction transaction = new Transaction(null, sellList.get(counter), 0, 0);
                 TransactionEntity transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
