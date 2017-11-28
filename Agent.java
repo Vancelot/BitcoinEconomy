@@ -71,6 +71,8 @@ public class Agent extends ViewableAtomic {
         addInport("inTime");
 
         addOutport("outOrders");
+        addOutport("outHashRates");
+        
         addTestInput("inTransactions", new entity("Transaction"));
         addTestInput("inBitcoinPrice", new entity("Price"));
 
@@ -105,6 +107,7 @@ public class Agent extends ViewableAtomic {
         Continue(e);
 
         // Clock for agents
+        if (phaseIs("passive")) {
         for (int i = 0; i < x.getLength(); i++)
             if (messageOnPort(x, "inTime", i)) {
                 uTime = x.getValOnPort("inTime", i);
@@ -182,6 +185,7 @@ public class Agent extends ViewableAtomic {
                     }
                 }
             }
+        }
     }
 
     public void deltint() {

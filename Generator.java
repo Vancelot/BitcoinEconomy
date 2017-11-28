@@ -22,7 +22,7 @@ public class Generator extends ViewableAtomic {
     protected double updatePriceTime;
 
     public Generator() {
-        this("Generator", 0.0649, 23274, 0);
+        this("Generator", 0.0649, 23274, 1);
     }
 
     public Generator(String name, double marketPrice, double numBitcoin, double updatePriceTime) {
@@ -40,14 +40,14 @@ public class Generator extends ViewableAtomic {
 
     public void initialize() {
         super.initialize();
-        phase = "passive";
-        sigma = INFINITY;
+        phase = "active";
+        sigma = 1;
     }
 
     public void deltext(double e, message x) {
         Continue(e);
 
-        if (phaseIs("passive")) {
+        if (phaseIs("active")) {
             for (int i = 0; i < x.getLength(); i++)
                 if (messageOnPort(x, "inTransaction", i)) {
 
@@ -67,8 +67,13 @@ public class Generator extends ViewableAtomic {
 
                     holdIn("updatePrice", updatePriceTime);
 
-                } else if (messageOnPort(x, "Stop", i)) {
-                    phase = "finishing";
+                }
+
+        }
+        if (phaseIs("active")) {
+            for (int i = 0; i < x.getLength(); i++)
+                if (messageOnPort(x, "Stop", i)) {
+                    passivate();
                 }
         }
 

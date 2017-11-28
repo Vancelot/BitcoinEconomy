@@ -6,14 +6,20 @@ import model.modeling.*;
 import model.simulation.*;
 import view.simView.*;
 
-public class MultiServerCoord extends ViewableAtomic {
+public class MultiServerCoord extends Coord {
 
     protected Queue transactionQ;
     protected Queue orderQ;
+    protected Queue timerQ;
+    protected Queue agentQ;
+
+    protected message transaction;
+    protected message order;
+    protected message time;
 
     protected entity bitcoinPriceMessage;
     protected entity timeMessage;
-    
+
     public MultiServerCoord() {
         this("MultiServerCoord");
     }
@@ -23,18 +29,9 @@ public class MultiServerCoord extends ViewableAtomic {
 
         transactionQ = new Queue();
         orderQ = new Queue();
+        timerQ = new Queue();
+        agentQ = new Queue();
 
-        addInport("inTransactions");
-        addInport("inBitcoinPrice");
-        addInport("inOrders");
-        addInport("inTimer");
-
-        // TODO - add test inputs
-
-        addInport("outTransactions");
-        addInport("outBitcoinPrice");
-        addInport("outOrders");
-        addInport("outTimer");
     }
 
     public void initialize() {
@@ -42,7 +39,7 @@ public class MultiServerCoord extends ViewableAtomic {
         sigma = INFINITY;
 
         super.initialize();
-        
+
         bitcoinPriceMessage = null;
         timeMessage = null;
     }
@@ -58,8 +55,10 @@ public class MultiServerCoord extends ViewableAtomic {
         Continue(e);
 
         if (phaseIs("passive")) {
+
             for (int i = 0; i < x.size(); i++) {
                 if (messageOnPort(x, "inTransactions", i)) {
+                    transaction = new message();
                     entity val = x.getValOnPort("inTransactions", i);
                     transactionQ.add(val);
 
@@ -69,9 +68,17 @@ public class MultiServerCoord extends ViewableAtomic {
 
                     holdIn("send_out", 0);
                 } else if (messageOnPort(x, "inTimer", i)) {
+                    time = new message();
                     entity timeMessage = x.getValOnPort("inTimer", i);
+                    if (!agentQ.isEmpty()) {
+                        entity acur = (entity) agentQ.first();
+                        agentQ.remove();
+                        time.add(makeContent("outTimer", new Pair(acur, timeMessage)));
+                        holdIn("send_out", 0);
+                    }
+                    Pair pr = (Pair) timeMessage;
+                    agentQ.add(pr.getKey());
 
-                    holdIn("send_out", 0);
                 } else if (messageOnPort(x, "inOrders", i)) {
                     entity val = x.getValOnPort("inOrders", i);
                     orderQ.add(val);
@@ -83,7 +90,8 @@ public class MultiServerCoord extends ViewableAtomic {
     }
 
     public void deltint() {
-            passivate();
+
+        passivate();
     }
 
     public message out() {
@@ -94,17 +102,17 @@ public class MultiServerCoord extends ViewableAtomic {
                 m.add(makeContent("outTransactions", transactionEntity));
             }
             transactionQ = new Queue();
-            
+
             if (bitcoinPriceMessage != null) {
                 m.add(makeContent("outBitcoinPrice", bitcoinPriceMessage));
                 bitcoinPriceMessage = null;
             }
-            
+
             if (timeMessage != null) {
                 m.add(makeContent("outTimer", timeMessage));
                 timeMessage = null;
             }
-            
+
             for (int i = 0; i < orderQ.size(); i++) {
                 entity orderEntity = (entity) orderQ.get(i);
                 m.add(makeContent("outOrders", orderEntity));
