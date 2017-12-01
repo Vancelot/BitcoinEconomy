@@ -7,20 +7,19 @@ import model.modeling.*;
 import view.modeling.ViewableAtomic;
 
 public class Transducer extends ViewableAtomic {
-
+    public static final int MODEL_TIME = 1856;
+    
     protected Queue hashRateQ;
 
-    protected Double totHashRate;
+    protected double totHashRate;
 
-    protected Double totNumBitcoin;
+    protected double totNumBitcoin;
 
-    protected double clock;
-   
-    protected Double modelTime;
-    protected Double marketTime;
+    protected int time;
+    protected int modelTime;
 
     public Transducer() {
-        this("Transducer", 1856);
+        this("Transducer", MODEL_TIME);
     }
 
     public Transducer(String name, int modelTime) {
@@ -29,39 +28,30 @@ public class Transducer extends ViewableAtomic {
         hashRateQ = new Queue();
 
         addInport("inHashRate");
-        addInport("inTime");
 
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
         addOutport("outTime");
         addOutport("out");
-        
-        addTestInput("inTime", new entity("time"));
 
-        this.modelTime = (double) modelTime;
+        this.modelTime = modelTime;
     }
 
     public void initialize() {
         super.initialize();
-        phase = "active";
-        sigma = modelTime;
+        phase = "passive";
+        sigma = INFINITY;
         totNumBitcoin = 0.0;
         totHashRate = 0.0;
-        marketTime = 0.0;
+        time = 0;
+
+        holdIn("outputTime", 1);
     }
 
     public void deltext(double e, message x) {
-        clock = clock + e;
         Continue(e);
         
-        for (int i = 0; i < x.size(); i++) {
-            if (messageOnPort(x, "inTime", i)) {
-                marketTime++;
-            }
-        }
-        
         for (int i = 0; i < x.getLength(); i++)
-
             if (messageOnPort(x, "inHashRate", i)) {
                 entity hashRate;
                 hashRate = x.getValOnPort("inHashRate", i);
@@ -76,10 +66,11 @@ public class Transducer extends ViewableAtomic {
     }
 
     public void deltint() {
-        clock = clock + sigma;
-        
+
         totHashRate = 0.0;
         entity hashRate;
+
+        time++;
 
         while (!hashRateQ.isEmpty()) {
 
@@ -89,40 +80,41 @@ public class Transducer extends ViewableAtomic {
             hashRateQ.remove(hashRate);
 
         }
-        
-        if (marketTime < 853) {
 
-            totNumBitcoin = marketTime * 72;
+        holdIn("outputTime", 1);
+
+        if (time < 853) {
+
+            totNumBitcoin = time * 72;
         } else
 
-            totNumBitcoin = marketTime * 36;
-    
-        passivate();
-        showState();
-       
+            totNumBitcoin = time * 36;
     }
-
-   
 
     public void deltcon(double e, message x) {
         System.out.println("confluent");
         deltext(e, x);
         deltint();
-
     }
 
     public message out() {
 
         message m = new message();
 
-        content con1 = makeContent("totHashRate", new entity(totHashRate.toString())); // TODO: message for totHashRate
-        content con2 = makeContent("totNumBitcoin", new entity(totNumBitcoin.toString())); // TODO: message for
-                                                                                           // totNumBitcoin
-        content con3 = makeContent("out", new entity("Stop"));
+        content con;
+        con = makeContent("outTotHashRate", new entity(String.valueOf(totHashRate)));
+        m.add(con);
 
-        m.add(con1);
-        m.add(con2);
-        m.add(con3);
+        con = makeContent("outTotNumBitcoin", new entity(String.valueOf(totNumBitcoin)));
+        m.add(con);
+
+        if (time >= modelTime) {
+            con = makeContent("out", new entity("Stop"));
+            m.add(con);
+        }
+
+        con = makeContent("outTime", new entity(String.valueOf(time)));
+        m.add(con);
 
         return m;
     }

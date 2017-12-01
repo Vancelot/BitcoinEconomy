@@ -31,6 +31,7 @@ public class Market extends ViewableDigraph {
 
         addOutport("outTransactions");
         addOutport("outHashRates");
+        addOutport("outBitcoins");
 
         add(multiServer);
         add(orderBook); // Add the Model Book to the Market model
@@ -41,11 +42,10 @@ public class Market extends ViewableDigraph {
 
         addCoupling(multiServer, "outOrders", orderBook, "inOrders");
 
-        addCoupling(orderBook, "OutTransactions", this, "outTransactions");
+        addCoupling(orderBook, "outTransactions", this, "outTransactions");
         addCoupling(orderBook, "OutTransactions", multiServer, "inTransactions");
         addCoupling(multiServer, "outHashRates", this, "outHashRates");
         addCoupling(multiServer, "outBitcoins", this, "outBitcoins");
-        
     }
 
     public static long now() {
