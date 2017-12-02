@@ -32,7 +32,7 @@ public class EF_Market extends ViewableDigraph {
         addCoupling(Market, "outNumBitcoin", ExpFrame, "inNumBitcoin");
                 
         addCoupling(ExpFrame, "outPriceBitcoin", Market, "inBitcoinPrice");
-        addCoupling(ExpFrame, "outTime", Market, "inTimer");
+        addCoupling(ExpFrame, "outTime", Market, "inTime");
         addCoupling(ExpFrame, "outPriceBitcoin", this, "priceBitcoin");
         addCoupling(ExpFrame, "outTotHashRate", this, "totHashRate");
         addCoupling(ExpFrame, "outTotNumBitcoin", this, "totNumBitcoin");
@@ -41,8 +41,6 @@ public class EF_Market extends ViewableDigraph {
     
     public void layoutForSimView() {
         preferredSize = new Dimension(1100, 620);
-        ((ViewableComponent) withName("ExpFrame")).setPreferredLocation(new Point(10, 20));
-        ((ViewableComponent) withName("Market")).setPreferredLocation(new Point(10, 200));
     }
 
 }

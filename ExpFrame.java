@@ -18,7 +18,7 @@ public class ExpFrame extends ViewableDigraph {
         super(name);
 
         ViewableAtomic Generator = new Generator("Generator", 0.0649, 23274, 0);
-        ViewableAtomic Transducer = new Transducer("Transducer", 5);
+        ViewableAtomic Transducer = new Transducer("Transducer", TOTAL_SIMULATION_TIME);
 
         add(Generator);
         add(Transducer);

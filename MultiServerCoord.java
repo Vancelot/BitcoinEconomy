@@ -13,7 +13,7 @@ public class MultiServerCoord extends Agent {
 
     protected entity bitcoinPriceMessage;
     protected entity timeMessage;
-    
+
     public MultiServerCoord() {
         this("MultiServerCoord");
     }
@@ -38,7 +38,7 @@ public class MultiServerCoord extends Agent {
         sigma = INFINITY;
 
         super.initialize();
-        
+
         bitcoinPriceMessage = null;
         timeMessage = null;
     }
@@ -53,27 +53,25 @@ public class MultiServerCoord extends Agent {
 
         Continue(e);
 
-        if (phaseIs("passive")) {
-            for (int i = 0; i < x.size(); i++) {
-                if (messageOnPort(x, "inTransactions", i)) {
-                    entity val = x.getValOnPort("inTransactions", i);
-                    transactionQ.add(val);
+        for (int i = 0; i < x.size(); i++) {
+            if (messageOnPort(x, "inTransactions", i)) {
+                entity val = x.getValOnPort("inTransactions", i);
+                transactionQ.add(val);
 
-                    holdIn("send_out", 0);
-                } else if (messageOnPort(x, "inBitcoinPrice", i)) {
-                    entity bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
+                holdIn("send_out", 0);
+            } else if (messageOnPort(x, "inBitcoinPrice", i)) {
+                entity bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
 
-                    holdIn("send_out", 0);
-                } else if (messageOnPort(x, "inTime", i)) {
-                    entity timeMessage = x.getValOnPort("inTimer", i);
+                holdIn("send_out", 0);
+            } else if (messageOnPort(x, "inTime", i)) {
+                entity timeMessage = x.getValOnPort("inTime", i);
 
-                    holdIn("send_out", 0);
-                } else if (messageOnPort(x, "inOrders", i)) {
-                    entity val = x.getValOnPort("inOrders", i);
-                    orderQ.add(val);
+                holdIn("send_out", 0);
+            } else if (messageOnPort(x, "inOrders", i)) {
+                entity val = x.getValOnPort("inOrders", i);
+                orderQ.add(val);
 
-                    holdIn("send_out", 0);
-                }
+                holdIn("send_out", 0);
             }
         }
     }
@@ -85,29 +83,27 @@ public class MultiServerCoord extends Agent {
 
     public message out() {
         message m = new message();
-        if (phaseIs("send_out")) {
-            for (int i = 0; i < transactionQ.size(); i++) {
-                entity transactionEntity = (entity) transactionQ.get(i);
-                m.add(makeContent("outTransactions", transactionEntity));
-            }
-            transactionQ = new Queue();
-
-            if (bitcoinPriceMessage != null) {
-                m.add(makeContent("outBitcoinPrice", bitcoinPriceMessage));
-                bitcoinPriceMessage = null;
-            }
-
-            if (timeMessage != null) {
-                m.add(makeContent("outTime", timeMessage));
-                timeMessage = null;
-            }
-
-            for (int i = 0; i < orderQ.size(); i++) {
-                entity orderEntity = (entity) orderQ.get(i);
-                m.add(makeContent("outOrders", orderEntity));
-            }
-            orderQ = new Queue();
+        for (int i = 0; i < transactionQ.size(); i++) {
+            entity transactionEntity = (entity) transactionQ.get(i);
+            m.add(makeContent("outTransactions", transactionEntity));
         }
+        transactionQ = new Queue();
+
+        if (bitcoinPriceMessage != null) {
+            m.add(makeContent("outBitcoinPrice", bitcoinPriceMessage));
+            bitcoinPriceMessage = null;
+        }
+
+        if (timeMessage != null) {
+            m.add(makeContent("outTime", timeMessage));
+            timeMessage = null;
+        }
+
+        for (int i = 0; i < orderQ.size(); i++) {
+            entity orderEntity = (entity) orderQ.get(i);
+            m.add(makeContent("outOrders", orderEntity));
+        }
+        orderQ = new Queue();
 
         return m;
     }
