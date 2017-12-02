@@ -60,11 +60,11 @@ public class MultiServerCoord extends Agent {
 
                 holdIn("send_out", 0);
             } else if (messageOnPort(x, "inBitcoinPrice", i)) {
-                entity bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
+                bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
 
                 holdIn("send_out", 0);
             } else if (messageOnPort(x, "inTime", i)) {
-                entity timeMessage = x.getValOnPort("inTime", i);
+                timeMessage = x.getValOnPort("inTime", i);
 
                 holdIn("send_out", 0);
             } else if (messageOnPort(x, "inOrders", i)) {
