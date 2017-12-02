@@ -121,12 +121,12 @@ public class Generator extends ViewableAtomic {
 
         message m = new message();
 
-        content con = makeContent("outPriceBitcoin", new entity(marketPrice.toString())); // TODO: message needs to send
+        content con = makeContent("outPriceBitcoin", new entity(String.valueOf(marketPrice))); // TODO: message needs to send
                                                                                           // the
         // price of Bitcoin
-        if (phaseIs("updatePrice")) {
+      
             m.add(con);
-        }
+      
 
         return m;
     }
