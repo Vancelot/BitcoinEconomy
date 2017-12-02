@@ -117,6 +117,10 @@ public class OrderBook extends ViewableAtomic {
     // if
     // s_j <= b_ior if one of the two limit prices, or both, are equal to 0
     private void matchOrders() {
+        // Only process when there is at least something in both of the lists
+        if ((buyList.size() == 0) || (sellList.size() == 0))
+            return;
+        
         // A sell order (with index j) and buy order (with index i) are considered
         // a match if sj <= bi
         while ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
