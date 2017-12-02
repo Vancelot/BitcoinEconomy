@@ -7,7 +7,7 @@ import model.modeling.*;
 import view.modeling.ViewableAtomic;
 
 public class Transducer extends ViewableAtomic {
-    public static final int MODEL_TIME = 1856;
+    public static final int TOTAL_SIMULATION_TIME_DEFAULT = 1856;
     
     protected Queue hashRateQ;
 
@@ -19,7 +19,7 @@ public class Transducer extends ViewableAtomic {
     protected int modelTime;
 
     public Transducer() {
-        this("Transducer", MODEL_TIME);
+        this("Transducer", TOTAL_SIMULATION_TIME_DEFAULT);
     }
 
     public Transducer(String name, int modelTime) {
@@ -32,7 +32,7 @@ public class Transducer extends ViewableAtomic {
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
         addOutport("outTime");
-        addOutport("out");
+        addOutport("outStop");
 
         this.modelTime = modelTime;
     }
@@ -50,7 +50,7 @@ public class Transducer extends ViewableAtomic {
 
     public void deltext(double e, message x) {
         Continue(e);
-        
+
         for (int i = 0; i < x.getLength(); i++)
             if (messageOnPort(x, "inHashRate", i)) {
                 entity hashRate;
@@ -73,21 +73,21 @@ public class Transducer extends ViewableAtomic {
         time++;
 
         while (!hashRateQ.isEmpty()) {
-
             hashRate = (entity) hashRateQ.first();
             double hRate = Double.parseDouble(hashRate.toString());
             totHashRate = totHashRate + hRate;
             hashRateQ.remove(hashRate);
-
         }
 
-        holdIn("outputTime", 1);
+        // Stop all outputs when end time is reached
+        if (time <= modelTime)
+            holdIn("outputTime", 1);
+        else
+            passivate();
 
         if (time < 853) {
-
             totNumBitcoin = time * 72;
         } else
-
             totNumBitcoin = time * 36;
     }
 
@@ -108,8 +108,9 @@ public class Transducer extends ViewableAtomic {
         con = makeContent("outTotNumBitcoin", new entity(String.valueOf(totNumBitcoin)));
         m.add(con);
 
-        if (time >= modelTime) {
-            con = makeContent("out", new entity("Stop"));
+        // Output stop to Generator
+        if (time == modelTime) {
+            con = makeContent("outStop", new entity("Stop"));
             m.add(con);
         }
 

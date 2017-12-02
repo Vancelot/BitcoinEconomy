@@ -8,6 +8,7 @@ import view.modeling.ViewableComponent;
 import view.modeling.ViewableDigraph;
 
 public class ExpFrame extends ViewableDigraph {
+    public static final int TOTAL_SIMULATION_TIME = 1856;
 
     public ExpFrame() {
         this("ExpFrame");
@@ -17,31 +18,29 @@ public class ExpFrame extends ViewableDigraph {
         super(name);
 
         ViewableAtomic Generator = new Generator("Generator", 0.0649, 23274, 0);
-        ViewableAtomic Transducer = new Transducer("Transducer", 1856);
-        ViewableAtomic clock = new clock("clock");
+        ViewableAtomic Transducer = new Transducer("Transducer", 5);
 
         add(Generator);
         add(Transducer);
-        add(clock);
 
-        addInport("inHashRate");
         addInport("inTransaction");
+        addInport("inHashRate");
+        addInport("inNumBitcoin");
 
         addOutport("outPriceBitcoin");
         addOutport("outTime");
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
 
-        addCoupling(this, "inHashRate", Transducer, "inHashRate");
         addCoupling(this, "inTransaction", Generator, "inTransaction");
-
-        addCoupling(Transducer, "out", Generator, "Stop");
-        addCoupling(Transducer, "out", clock, "Stop");
-        
-        addCoupling(clock, "outTime", Transducer, "inTime");
+        addCoupling(this, "inHashRate", Transducer, "inHashRate");
+        addCoupling(this, "inNumBitcoin", Transducer, "inNumBitcoin");
 
         addCoupling(Generator, "outPriceBitcoin", this, "outPriceBitcoin");
-        addCoupling(clock, "outTime", this, "outTime");
+
+        addCoupling(Transducer, "outStop", Generator, "inStop");
+        
+        addCoupling(Transducer, "outTime", this, "outTime");
         addCoupling(Transducer, "outTotHashRate", this, "outTotHashRate");
         addCoupling(Transducer, "outTotNumBitcoin", this, "outTotNumBitcoin");
 
@@ -51,6 +50,5 @@ public class ExpFrame extends ViewableDigraph {
         preferredSize = new Dimension(700, 160);
         ((ViewableComponent) withName("Transducer")).setPreferredLocation(new Point(0, 75));
         ((ViewableComponent) withName("Generator")).setPreferredLocation(new Point(0, 20));
-        ((ViewableComponent) withName("clock")).setPreferredLocation(new Point(300, 20));
     }
 }
