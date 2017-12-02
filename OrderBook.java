@@ -39,9 +39,9 @@ public class OrderBook extends ViewableAtomic {
         buyList = new ArrayList<Order>();
         sellList = new ArrayList<Order>();
 
-        addInport("InOrders");
-        addInport("InTimer");
-        addOutport("OutTransactions"); // Port to output matched transactions
+        addInport("inOrders");
+        addInport("inTime");
+        addOutport("outTransactions"); // Port to output matched transactions
     }
 
     public void initialize() {
@@ -67,8 +67,8 @@ public class OrderBook extends ViewableAtomic {
 
         if (phaseIs("passive")) {
             for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "InOrders", i)) {
-                    OrderEntity message = (OrderEntity) x.getValOnPort("InOrders", i);
+                if (messageOnPort(x, "inOrders", i)) {
+                    OrderEntity message = (OrderEntity) x.getValOnPort("inOrders", i);
                     Order order = message.getv();
                     if (order.type == Order.OrderType.BUY) {
                         // Initialize Residual Amount to Amount
@@ -87,7 +87,7 @@ public class OrderBook extends ViewableAtomic {
 
                         holdIn("matching", 0);
                     }
-                } else if (messageOnPort(x, "InTimer", i)) {
+                } else if (messageOnPort(x, "inTime", i)) {
                     time++;
 
                     // Perform the matching process until no match found
@@ -230,12 +230,12 @@ public class OrderBook extends ViewableAtomic {
 
         message m = new message();
 
-        content con = makeContent("OutTransactions", new entity("Transaction"));
+        content con = makeContent("outTransactions", new entity("Transaction"));
 
         while (transactionQ.first() != null) {
             TransactionEntity transactionEntity = (TransactionEntity) transactionQ.first();
 
-            con = makeContent("OutTransactions", transactionEntity);
+            con = makeContent("outTransactions", transactionEntity);
             m.add(con);
 
             transactionQ.remove();

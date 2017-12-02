@@ -28,7 +28,7 @@ public class Generator extends ViewableAtomic {
     public Generator(String name, double marketPrice, double numBitcoin, double updatePriceTime) {
         super(name);
 
-        addInport("Stop");
+        addInport("inStop");
         addInport("inTransaction");
 
         addOutport("outPriceBitcoin");
@@ -72,7 +72,7 @@ public class Generator extends ViewableAtomic {
         }
         if (phaseIs("active")) {
             for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "Stop", i)) {
+                if (messageOnPort(x, "inStop", i)) {
                     passivate();
                 }
         }

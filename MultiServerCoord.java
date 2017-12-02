@@ -6,32 +6,31 @@ import model.modeling.*;
 import model.simulation.*;
 import view.simView.*;
 
-public class MultiServerCoord extends Coord {
+public class MultiServerCoord extends Agent {
 
     protected Queue transactionQ;
     protected Queue orderQ;
-    protected Queue timerQ;
-    protected Queue agentQ;
-
-    protected message transaction;
-    protected message order;
-    protected message time;
 
     protected entity bitcoinPriceMessage;
     protected entity timeMessage;
-
+    
     public MultiServerCoord() {
         this("MultiServerCoord");
     }
 
     public MultiServerCoord(String name) {
-        super(name);
+        super();
 
         transactionQ = new Queue();
         orderQ = new Queue();
-        timerQ = new Queue();
-        agentQ = new Queue();
 
+        addInport("inOrders");
+
+        // TODO - add test inputs
+
+        addOutport("outTransactions");
+        addOutport("outBitcoinPrice");
+        addOutport("outTime");
     }
 
     public void initialize() {
@@ -39,7 +38,7 @@ public class MultiServerCoord extends Coord {
         sigma = INFINITY;
 
         super.initialize();
-
+        
         bitcoinPriceMessage = null;
         timeMessage = null;
     }
@@ -55,10 +54,8 @@ public class MultiServerCoord extends Coord {
         Continue(e);
 
         if (phaseIs("passive")) {
-
             for (int i = 0; i < x.size(); i++) {
                 if (messageOnPort(x, "inTransactions", i)) {
-                    transaction = new message();
                     entity val = x.getValOnPort("inTransactions", i);
                     transactionQ.add(val);
 
@@ -67,18 +64,10 @@ public class MultiServerCoord extends Coord {
                     entity bitcoinPriceMessage = x.getValOnPort("inBitcoinPrice", i);
 
                     holdIn("send_out", 0);
-                } else if (messageOnPort(x, "inTimer", i)) {
-                    time = new message();
+                } else if (messageOnPort(x, "inTime", i)) {
                     entity timeMessage = x.getValOnPort("inTimer", i);
-                    if (!agentQ.isEmpty()) {
-                        entity acur = (entity) agentQ.first();
-                        agentQ.remove();
-                        time.add(makeContent("outTimer", new Pair(acur, timeMessage)));
-                        holdIn("send_out", 0);
-                    }
-                    Pair pr = (Pair) timeMessage;
-                    agentQ.add(pr.getKey());
 
+                    holdIn("send_out", 0);
                 } else if (messageOnPort(x, "inOrders", i)) {
                     entity val = x.getValOnPort("inOrders", i);
                     orderQ.add(val);
@@ -109,7 +98,7 @@ public class MultiServerCoord extends Coord {
             }
 
             if (timeMessage != null) {
-                m.add(makeContent("outTimer", timeMessage));
+                m.add(makeContent("outTime", timeMessage));
                 timeMessage = null;
             }
 

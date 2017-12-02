@@ -14,8 +14,8 @@ public class Market extends ViewableDigraph {
     private OrderBook orderBook;
     private MultiServer multiServer;
 
-    private final int NUMBER_OF_INITIAL_TRADERS = 1;
-    private final int TOTAL_NUMBER_OF_TRADERS = 2; // Total number of traders at the end of simulation
+    private final int NUMBER_OF_INITIAL_TRADERS = 3;
+    private final int TOTAL_NUMBER_OF_TRADERS = 5; // Total number of traders at the end of simulation
     private final double INITIAL_BITCOINS_OF_INITIAL_TRADERS = 87.28;
     private final double INITIAL_BITCOIN_PRICE = 0.0649; // The average price as of September 2010
 
@@ -27,7 +27,7 @@ public class Market extends ViewableDigraph {
         orderBook = new OrderBook();
 
         addInport("inBitcoinPrice");
-        addInport("inTimer");
+        addInport("inTime");
 
         addOutport("outTransactions");
         addOutport("outHashRates");
@@ -37,13 +37,13 @@ public class Market extends ViewableDigraph {
         add(orderBook); // Add the Model Book to the Market model
 
         addCoupling(this, "inBitcoinPrice", multiServer, "inBitcoinPrice");
-        addCoupling(this, "inTimer", multiServer, "inTimer");
-        addCoupling(this, "inTimer", orderBook, "inTimer");
+        addCoupling(this, "inTime", multiServer, "inTime");
+        addCoupling(this, "inTime", orderBook, "inTime");
 
         addCoupling(multiServer, "outOrders", orderBook, "inOrders");
 
         addCoupling(orderBook, "outTransactions", this, "outTransactions");
-        addCoupling(orderBook, "OutTransactions", multiServer, "inTransactions");
+        addCoupling(orderBook, "outTransactions", multiServer, "inTransactions");
         addCoupling(multiServer, "outHashRates", this, "outHashRates");
         addCoupling(multiServer, "outBitcoins", this, "outBitcoins");
     }
@@ -58,8 +58,8 @@ public class Market extends ViewableDigraph {
      */
     public void layoutForSimView()
     {
-        preferredSize = new Dimension(975, 400);
-        ((ViewableComponent)withName("OrderBook")).setPreferredLocation(new Point(300, 20));
+        preferredSize = new Dimension(975, 675);
         ((ViewableComponent)withName("Multiserver")).setPreferredLocation(new Point(15, 89));
+        ((ViewableComponent)withName("OrderBook")).setPreferredLocation(new Point(150, 24));
     }
 }

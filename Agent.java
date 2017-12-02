@@ -64,7 +64,7 @@ public class Agent extends ViewableAtomic {
     }
 
     public Agent(AgentType none, int id, double numBitcoin, double bitcoinPrice, boolean enterMarket) {
-        super();
+        super("Agent" + id);
 
         addInport("inTransactions");
         addInport("inBitcoinPrice");
