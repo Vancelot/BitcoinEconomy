@@ -157,7 +157,7 @@ public class Agent extends ViewableAtomic {
                 }
 
                 // Retrieve Transaction
-                TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
+                TransactionEntity message = (TransactionEntity) x.getValOnPort("inTransactions", i);
                 Transaction transaction = message.getv();
 
                 // Check if this transaction message is for an expired order, which means

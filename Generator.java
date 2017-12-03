@@ -29,7 +29,7 @@ public class Generator extends ViewableAtomic {
         super(name);
 
         addInport("inStop");
-        addInport("inTransaction");
+        addInport("inTransactions");
 
         addOutport("outPriceBitcoin");
 
@@ -47,13 +47,11 @@ public class Generator extends ViewableAtomic {
     public void deltext(double e, message x) {
         Continue(e);
 
-        if (phaseIs("active")) {
-            for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "inTransaction", i)) {
-
+        for (int i = 0; i < x.getLength(); i++)
+            if (messageOnPort(x, "inTransactions", i)) {
+                if (phaseIs("active")) {
                     // Retrieve Transaction
-
-                    TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
+                    TransactionEntity message = (TransactionEntity) x.getValOnPort("inTransactions", i);
                     Transaction order = message.getv();
 
                     // Extract price of Bitcoin from Transaction
@@ -66,27 +64,15 @@ public class Generator extends ViewableAtomic {
                     transNumBitcoin = aBuyOrder.amount;
 
                     holdIn("updatePrice", updatePriceTime);
-
-                }
-
-        }
-        if (phaseIs("active")) {
-            for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "inStop", i)) {
-                    passivate();
-                }
-        }
-
-        // TODO: put messages in queue
-        if (phaseIs("updatePrice")) {
-            for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "inTransaction", i)) {
-                    transaction = x.getValOnPort("inTransaction", i);
+                } else if (phaseIs("updatePrice")) {
+                    transaction = x.getValOnPort("inTransactions", i);
                     transQ.add(transaction);
-                }
 
-            transaction = (entity) transQ.first();
-        }
+                    transaction = (entity) transQ.first();
+                }
+            } else if (messageOnPort(x, "inStop", i)) {
+                passivate();
+            }
     }
 
     public void deltint(message x) {
@@ -117,16 +103,11 @@ public class Generator extends ViewableAtomic {
     }
 
     public message out() {
-        // TODO: Messages need to have price of Bitcoin
-
         message m = new message();
 
-        content con = makeContent("outPriceBitcoin", new entity(String.valueOf(marketPrice))); // TODO: message needs to send
-                                                                                          // the
-        // price of Bitcoin
-      
-            m.add(con);
-      
+        content con = makeContent("outPriceBitcoin", new entity(String.valueOf(marketPrice)));
+
+        m.add(con);
 
         return m;
     }
