@@ -25,11 +25,6 @@ public class Agent extends ViewableAtomic {
     protected AgentType type; // Types of agent, to be decided when the agent enters the market
 
     protected int id; // ID of an agent, all agents will have ID starting from 0 to the total number
-    protected double numBitcoinSell; // Number of Bitcoins in a sell order
-    protected double sellLimitPrice; // Sell limit price in a sell order
-    protected double numBitcoinBuy; // Number of Bitcoin in a buy order
-    protected double buyLimitPrice; // Buy limit price in a buy order
-    protected int expirationTime; // Time that Order has to expire
 
     protected double bitcoinPrice; // Bitcoin price, updated from the input from the Experimental Frame
     protected double lastPrice;
@@ -37,8 +32,10 @@ public class Agent extends ViewableAtomic {
     protected double numBitcoin; // Number of Bitcoins the agent holds
     protected double pendingBitcoin; // Pending Bitcoins in OrderBook
     protected double cash; // Fiat cash the agent holds
-
     protected double pendingCash; // pending cash to buy Bitcoins in OrderBook
+
+    protected Order buyOrder;
+    protected Order sellOrder;
 
     protected double chartistSumOfSquare;
     protected int chartistOrderTime; // counts number of days in a time window
@@ -81,6 +78,7 @@ public class Agent extends ViewableAtomic {
         this.enterMarket = enterMarket;
         this.chartistSumOfSquare = 0;
         this.chartistOrderTime = 0;
+
     }
 
     public void initialize() {
@@ -99,91 +97,89 @@ public class Agent extends ViewableAtomic {
 
         this.pendingBitcoin = 0;
         this.pendingCash = 0;
+
+        buyOrder = null;
+        sellOrder = null;
     }
 
     public void deltext(double e, message x) {
         Continue(e);
 
-        // Clock for agents
-        if (phaseIs("passive")) {
-            for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "inTime", i)) {
-                    entity uTime = x.getValOnPort("inTime", i);
-                    marketTime = Integer.parseInt(uTime.toString()); // TODO: Takes message (entity) on port converts to
-                                                                     // string, then to integer
+        for (int i = 0; i < x.getLength(); i++)
+            // Clock for agents
+            if (messageOnPort(x, "inTime", i)) {
+                entity uTime = x.getValOnPort("inTime", i);
+                marketTime = Integer.parseInt(uTime.toString()); // TODO: Takes message (entity) on port converts to
+                                                                 // string, then to integer
 
-                    // Wake up agent to enter market
-                    if ((marketTime > 0) && (enterMarket == false) && enterToMarket(marketTime)) {
-                        enterMarket = true;
+                // Wake up agent to enter market
+                if ((marketTime > 0) && (enterMarket == false) && enterToMarket(marketTime)) {
+                    enterMarket = true;
 
-                        enterMarketTime = marketTime;
+                    enterMarketTime = marketTime;
 
-                        this.numBitcoin = getInitialBitcoins(marketTime);
-                        this.cash = 5 * (this.numBitcoin * bitcoinPrice);
-                        this.type = determineAgentType(marketTime);
-                        minerDecisionTime = decisionTime(agentTime);
-                        numBitcoinSell = 0;
-                        numBitcoinBuy = 0;
-                        sellLimitPrice = 0;
-                        buyLimitPrice = 0;
-                        pendingBitcoin = 0;
-                        pendingCash = 0;
-                    }
+                    this.numBitcoin = getInitialBitcoins(marketTime);
+                    this.cash = 5 * (this.numBitcoin * bitcoinPrice);
+                    this.type = determineAgentType(marketTime);
+                    minerDecisionTime = decisionTime(agentTime);
 
-                    if (enterMarket) {
-                        agentTime = marketTime - enterMarketTime;
+                    pendingBitcoin = 0;
+                    pendingCash = 0;
+                }
 
-                        if (type == AgentType.MINER)
-                            runMiner();
-                        else if (type == AgentType.RANDOM_TRADER)
-                            runRandomTrader();
-                        else if (type == AgentType.CHARTIST)
-                            runChartist();
-                    }
-                } else if (messageOnPort(x, "inBitcoinPrice", i)) { // Updating Price of Bitcoin
-                    entity marketPrice;
-                    marketPrice = x.getValOnPort("inBitcoinPrice", i);
-                    lastPrice = bitcoinPrice; // Updates last Price of Bitcoin
-                    bitcoinPrice = Double.parseDouble(marketPrice.toString()); // Updates Price of Bitcoin
-                } else if (messageOnPort(x, "inTransactions", i) && enterMarket) {
-                    // Only process Transaction messages when the agent is active
-                    if (type == AgentType.MINER && buyHardware == true) {
-                        hashRate = hashRate + minerHashRate(agentTime); // Updates miner Hash Rate
-                    }
+                if (enterMarket) {
+                    agentTime = marketTime - enterMarketTime;
 
-                    // Retrieve Transaction
-                    TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
-                    Transaction transaction = message.getv();
+                    if (type == AgentType.MINER)
+                        runMiner();
+                    else if (type == AgentType.RANDOM_TRADER)
+                        runRandomTrader();
+                    else if (type == AgentType.CHARTIST)
+                        runChartist();
+                }
+            } else if (messageOnPort(x, "inBitcoinPrice", i)) { // Updating Price of Bitcoin
+                entity marketPrice;
+                marketPrice = x.getValOnPort("inBitcoinPrice", i);
+                lastPrice = bitcoinPrice; // Updates last Price of Bitcoin
+                bitcoinPrice = Double.parseDouble(marketPrice.toString()); // Updates Price of Bitcoin
+            } else if (messageOnPort(x, "inTransactions", i) && enterMarket) {
+                // Only process Transaction messages when the agent is active
+                if (type == AgentType.MINER && buyHardware == true) {
+                    hashRate = hashRate + minerHashRate(agentTime); // Updates miner Hash Rate
+                }
 
-                    // Check if this transaction message is for an expired order, which means
-                    // either buy order or sell order in the transaction is null
-                    Order buyOrder = transaction.buyOrder;
-                    Order sellOrder = transaction.sellOrder;
+                // Retrieve Transaction
+                TransactionEntity message = (TransactionEntity) x.getValOnPort("InTransaction", i);
+                Transaction transaction = message.getv();
 
-                    if ((buyOrder == null) && (sellOrder == null)) {
-                        // Do nothing; unexpected transaction with both orders being NULL
-                    } else if (buyOrder == null) { // Sell order expired
-                        // Update the pending Bitcoin amount
-                        pendingBitcoin -= sellOrder.residualAmount;
-                        numBitcoin += sellOrder.residualAmount;
-                    } else if (sellOrder == null) { // Buy order expired
-                        // Update the pending Cash amount
+                // Check if this transaction message is for an expired order, which means
+                // either buy order or sell order in the transaction is null
+                Order buyOrder = transaction.buyOrder;
+                Order sellOrder = transaction.sellOrder;
+
+                if ((buyOrder == null) && (sellOrder == null)) {
+                    // Do nothing; unexpected transaction with both orders being NULL
+                } else if (buyOrder == null) { // Sell order expired
+                    // Update the pending Bitcoin amount
+                    pendingBitcoin -= sellOrder.residualAmount;
+                    numBitcoin += sellOrder.residualAmount;
+                } else if (sellOrder == null) { // Buy order expired
+                    // Update the pending Cash amount
+                    pendingCash -= buyOrder.residualAmount;
+                    cash += buyOrder.residualAmount;
+                } else { // This is a valid transaction, check if this transaction is related to the
+                         // Agent
+                    if (buyOrder.agentId == id) {
+                        // Update wallet
+                        numBitcoin += transaction.bitcoinAmount;
                         pendingCash -= buyOrder.residualAmount;
-                        cash += buyOrder.residualAmount;
-                    } else { // This is a valid transaction, check if this transaction is related to the
-                             // Agent
-                        if (buyOrder.agentId == id) {
-                            // Update wallet
-                            numBitcoin += transaction.bitcoinAmount;
-                            pendingCash -= buyOrder.residualAmount;
-                        } else if (sellOrder.agentId == id) {
-                            // Update wallet
-                            cash += transaction.bitcoinAmount * transaction.price;
-                            pendingBitcoin -= transaction.bitcoinAmount;
-                        }
+                    } else if (sellOrder.agentId == id) {
+                        // Update wallet
+                        cash += transaction.bitcoinAmount * transaction.price;
+                        pendingBitcoin -= transaction.bitcoinAmount;
                     }
                 }
-        }
+            }
     }
 
     public void deltint() {
@@ -207,26 +203,29 @@ public class Agent extends ViewableAtomic {
                 holdIn("issueSellOrder", 0);
                 buyHardware = true;
 
-                numBitcoinSell = numBitcoinSell();
-                sellLimitPrice = sellLimitPrice();
-                expirationTime = expirationTime(marketTime);
+                double numBitcoinSell = numBitcoinSell();
+                double sellLimitPrice = sellLimitPrice();
+                int expirationTime = expirationTime(marketTime);
 
+                sellOrder = makeSellOrder(numBitcoinSell, sellLimitPrice, expirationTime);
                 // cash = cash - (cash * percentCashForHardware(sigma));
                 // numBitcoin = numBitcoin - (numBitcoin *
                 // percentBitcoinCashForHardware(sigma));
                 // These values must be extracted from Transaction messages
             }
         }
-
         // If running out of cash, sell Bitcoins to get cash to pay bills
-        if (cash <= 0) {
+        else if (cash <= 0) {
             // issue sell order
             holdIn("issueSellOrder", 0);
             buyHardware = false;
-            numBitcoinSell = numBitcoinSell();
-            sellLimitPrice = sellLimitPrice();
-            expirationTime = expirationTime(marketTime); // TODO: I think this is model time, because it goes to
-                                                         // OrderBook
+            double numBitcoinSell = numBitcoinSell();
+            double sellLimitPrice = sellLimitPrice();
+            int expirationTime = expirationTime(marketTime);
+
+            sellOrder = makeSellOrder(numBitcoinSell, sellLimitPrice, expirationTime); // TODO: I think this is model
+                                                                                       // time, because it goes to
+                                                                                       // OrderBook
         }
     }
 
@@ -241,17 +240,22 @@ public class Agent extends ViewableAtomic {
             // Issue Buy order
             if (result >= .5 && cash > 0) {
                 holdIn("issueBuyOrder", 0);
-                numBitcoinBuy = numBitcoinBuy();
-                buyLimitPrice = buyLimitPrice();
-                expirationTime = expirationTime(marketTime);
+
+                double numBitcoinBuy = numBitcoinBuy();
+                double buyLimitPrice = buyLimitPrice();
+                int expirationTime = expirationTime(marketTime);
+
+                buyOrder = makeBuyOrder(numBitcoinBuy, buyLimitPrice, expirationTime);
             }
 
             // Issue Sell order
             if (result < .5) {
                 holdIn("issueSellOrder", 0);
-                numBitcoinSell = numBitcoinSell();
-                sellLimitPrice = sellLimitPrice();
-                expirationTime = expirationTime(marketTime);
+                double numBitcoinSell = numBitcoinSell();
+                double sellLimitPrice = sellLimitPrice();
+                int expirationTime = expirationTime(marketTime);
+
+                sellOrder = makeSellOrder(numBitcoinSell, sellLimitPrice, expirationTime);
             }
 
         }
@@ -267,19 +271,39 @@ public class Agent extends ViewableAtomic {
             // Issue Buy order
             if (cVariance > 0.01) {
                 holdIn("issueBuyOrder", 0);
-                numBitcoinBuy = numBitcoinBuy();
-                buyLimitPrice = buyLimitPrice();
-                expirationTime = expirationTime(marketTime);
+                double numBitcoinBuy = numBitcoinBuy();
+                double buyLimitPrice = buyLimitPrice();
+                int expirationTime = expirationTime(marketTime);
+
+                buyOrder = makeBuyOrder(numBitcoinBuy, buyLimitPrice, expirationTime);
             }
 
             // Issue Sell order
             if (cVariance < 0.01) {
                 holdIn("issueSellOrder", 0);
-                numBitcoinSell = numBitcoinSell();
-                sellLimitPrice = sellLimitPrice();
-                expirationTime = expirationTime(marketTime);
+                double numBitcoinSell = numBitcoinSell();
+                double sellLimitPrice = sellLimitPrice();
+                int expirationTime = expirationTime(marketTime);
+
+                sellOrder = makeSellOrder(numBitcoinSell, sellLimitPrice, expirationTime);
             }
         }
+    }
+
+    // Create a Buy order
+    Order makeBuyOrder(double aAmount, double aLimitPrice, int aExpirationTime) {
+        Order order = new Order(OrderType.BUY, id, aAmount, aLimitPrice, aExpirationTime);
+        pendingCash = aAmount;
+
+        return order;
+    }
+
+    // Create a Sell order
+    Order makeSellOrder(double aAmount, double aLimitPrice, int aExpirationTime) {
+        Order order = new Order(OrderType.BUY, id, aAmount, aLimitPrice, aExpirationTime);
+        pendingBitcoin = aAmount;
+
+        return order;
     }
 
     private AgentType determineAgentType(double t) {
@@ -733,8 +757,8 @@ public class Agent extends ViewableAtomic {
         message m = new message();
 
         if (phaseIs("issueSellOrder")) {
-            content con = makeContent("outOrders",
-                    new OrderEntity(new Order(OrderType.SELL, id, numBitcoinSell, sellLimitPrice, expirationTime)));
+            content con = makeContent("outOrders", new OrderEntity(sellOrder));
+            sellOrder = null;
             if (type == AgentType.MINER) {
                 minerDecisionTime = decisionTime(agentTime); // Schedules next decision time for miner
                 m.add(con);
@@ -745,8 +769,8 @@ public class Agent extends ViewableAtomic {
             } else
                 m.add(con);
         } else if (phaseIs("issueBuyOrder")) {
-            content con = makeContent("outOrders",
-                    new OrderEntity(new Order(OrderType.BUY, id, numBitcoinBuy, buyLimitPrice, expirationTime)));
+            content con = makeContent("outOrders", new OrderEntity(buyOrder));
+            buyOrder = null;
             m.add(con);
         }
 
