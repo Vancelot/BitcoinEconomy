@@ -394,7 +394,7 @@ public class Agent extends ViewableAtomic {
         // if g1i > 1 return 1
 
         Random r = new Random();
-        double g1i = (double) Math.exp(r.nextGaussian() * 0.15 + 0.6);
+        double g1i = (double) r.nextGaussian() * 0.15 + 0.6; // Originally (double) Math.exp(r.nextGaussian() * 0.15 + 0.6);
 
         if (g1i > 1)
             return 1;
@@ -432,7 +432,7 @@ public class Agent extends ViewableAtomic {
     private double bestHashRate(double t) {
         // Calculate the best hash rate at time t
         // R(t) = a * e ^ (b * t)
-        final int A = 86350;
+        final int A = 9; // Originally 86350;
         final double B = 0.006318;
 
         return (A * Math.exp(B * t));
@@ -642,11 +642,11 @@ public class Agent extends ViewableAtomic {
         // ave = 1, stdv << 1
 
         Random r = new Random();
-        double var = (double) Math.round(r.nextGaussian() * .00001 + 1);
+        double var = (double) r.nextGaussian() * .3 + 0.7; // Originally (double) Math.round(r.nextGaussian() * .00001 + 1);
 
         double result = r.nextDouble(); // 0.0 to 1.0
 
-        if (result < marketOrderProb())
+        if (result <= marketOrderProb())
             return (0);
         else {
             return (bitcoinPrice / var);
@@ -763,9 +763,13 @@ public class Agent extends ViewableAtomic {
         // expiration date
 
         message m = new message();
+        
+        content con;
+        con = makeContent("outHashRates", new entity(String.valueOf(hashRate)));
+        m.add(con);
 
         if (phaseIs("issueSellOrder")) {
-            content con = makeContent("outOrders", new OrderEntity(sellOrder));
+            con = makeContent("outOrders", new OrderEntity(sellOrder));
             sellOrder = null;
             if (type == AgentType.MINER) {
                 minerDecisionTime = decisionTime(agentTime); // Schedules next decision time for miner
@@ -777,7 +781,7 @@ public class Agent extends ViewableAtomic {
             } else
                 m.add(con);
         } else if (phaseIs("issueBuyOrder")) {
-            content con = makeContent("outOrders", new OrderEntity(buyOrder));
+            con = makeContent("outOrders", new OrderEntity(buyOrder));
             buyOrder = null;
             m.add(con);
         }

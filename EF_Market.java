@@ -40,7 +40,9 @@ public class EF_Market extends ViewableDigraph {
     }
     
     public void layoutForSimView() {
-        preferredSize = new Dimension(1100, 620);
+        preferredSize = new Dimension(1100, 1000);
+        ((ViewableComponent) withName("ExpFrame")).setPreferredLocation(new Point(10, 20));
+        ((ViewableComponent) withName("Market")).setPreferredLocation(new Point(10, 200));
     }
 
 }
