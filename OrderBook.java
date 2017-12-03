@@ -39,6 +39,7 @@ public class OrderBook extends ViewableAtomic {
         buyList = new ArrayList<Order>();
         sellList = new ArrayList<Order>();
 
+        addInport("inBitcoinPrice");
         addInport("inOrders");
         addInport("inTime");
         addOutport("outTransactions"); // Port to output matched transactions
@@ -66,34 +67,36 @@ public class OrderBook extends ViewableAtomic {
         // - If new orders have the same limit price, orders with older issue time are
         // placed before the recent orders.
 
-        if (phaseIs("passive")) {
-            for (int i = 0; i < x.getLength(); i++)
-                if (messageOnPort(x, "inOrders", i)) {
-                    OrderEntity message = (OrderEntity) x.getValOnPort("inOrders", i);
-                    Order order = message.getv();
-                    if (order.type == Order.OrderType.BUY) {
-                        // Initialize Residual Amount to Amount
-                        order.residualAmount = order.amount;
-                        // Then save to list in the sorted order
-                        buyList.add(order);
-                        Collections.sort(buyList);
-                    } else if (order.type == Order.OrderType.SELL) {
-                        // Initialize Residual Amount to Amount
-                        order.residualAmount = order.amount;
-                        // Then save to list in the sorted order
-                        sellList.add(order);
-                        Collections.sort(sellList);
-                    }
-                } else if (messageOnPort(x, "inTime", i)) {
-                    time++;
-
-                    // Perform the matching process until no match found
-                    matchOrders();
-
-                    removeExpiredBuyOrders();
-                    removeExpiredSellOrders();
+        for (int i = 0; i < x.getLength(); i++)
+            if (messageOnPort(x, "inOrders", i)) {
+                OrderEntity message = (OrderEntity) x.getValOnPort("inOrders", i);
+                Order order = message.getv();
+                if (order.type == Order.OrderType.BUY) {
+                    // Initialize Residual Amount to Amount
+                    order.residualAmount = order.amount;
+                    // Then save to list in the sorted order
+                    buyList.add(order);
+                    Collections.sort(buyList);
+                } else if (order.type == Order.OrderType.SELL) {
+                    // Initialize Residual Amount to Amount
+                    order.residualAmount = order.amount;
+                    // Then save to list in the sorted order
+                    sellList.add(order);
+                    Collections.sort(sellList);
                 }
-        }
+            } else if (messageOnPort(x, "inTime", i)) {
+                time++;
+
+                // Perform the matching process until no match found
+                matchOrders();
+
+                removeExpiredBuyOrders();
+                removeExpiredSellOrders();
+            } else if (messageOnPort(x, "inBitcoinPrice", i)) { // Updating Price of Bitcoin
+                entity marketPriceEntity;
+                marketPriceEntity = x.getValOnPort("inBitcoinPrice", i);
+                marketPrice = Double.parseDouble(marketPriceEntity.toString()); // Updates Price of Bitcoin
+            }
     }
 
     // Match the orders from the Buy list and Sell list as follows:
@@ -114,14 +117,11 @@ public class OrderBook extends ViewableAtomic {
     // if
     // s_j <= b_ior if one of the two limit prices, or both, are equal to 0
     private void matchOrders() {
-        // Only process when there is at least something in both of the lists
-        if ((buyList.size() == 0) || (sellList.size() == 0))
-            return;
-        
         // A sell order (with index j) and buy order (with index i) are considered
         // a match if sj <= bi
-        while ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
-                || (sellList.get(0).limitPrice == 0)) {
+        while (((buyList.size() > 0) && (sellList.size() > 0) &&
+                ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
+                || (sellList.get(0).limitPrice == 0)))) {
             Transaction transaction;
             TransactionEntity transEntity;
 
@@ -130,13 +130,13 @@ public class OrderBook extends ViewableAtomic {
             double buyerResidualAmountInCash = buyList.get(0).residualAmount;
             double sellerResidualAmountInCash = sellList.get(0).residualAmount * price;
             double bitcoinAmount = 0;
-            
+
             // Start to execute order: compare orders in terms of Residual Amount in cash
             if (buyerResidualAmountInCash == sellerResidualAmountInCash) {
                 bitcoinAmount = sellList.get(0).residualAmount;
                 buyList.get(0).residualAmount = 0;
                 sellList.get(0).residualAmount = 0;
-                
+
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
@@ -147,7 +147,7 @@ public class OrderBook extends ViewableAtomic {
                 bitcoinAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
                 buyList.get(0).residualAmount = buyerResidualAmountInCash - sellerResidualAmountInCash;
                 sellList.get(0).residualAmount = 0;
-                
+
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
@@ -157,14 +157,14 @@ public class OrderBook extends ViewableAtomic {
                 bitcoinAmount = sellList.get(0).residualAmount - buyerResidualAmountInCash / price;
                 sellList.get(0).residualAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
                 buyList.get(0).residualAmount = 0;
-                
+
                 transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
                 buyList.remove(0); // This buy order is completed
             }
-            
+
             holdIn("outputTransactions", 0); // Output now
         }
     }
@@ -192,7 +192,7 @@ public class OrderBook extends ViewableAtomic {
             }
         }
     }
-    
+
     // Check whether the order expires
     private boolean isOrderValid(Order order) {
         boolean valid = false;

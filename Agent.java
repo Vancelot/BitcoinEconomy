@@ -255,9 +255,8 @@ public class Agent extends ViewableAtomic {
 
                 buyOrder = makeBuyOrder(numBitcoinBuy, buyLimitPrice, expirationTime);
             }
-
             // Issue Sell order
-            if (result < .5) {
+            else if (result < .5) {
                 holdIn("issueSellOrder", 0);
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();
@@ -285,9 +284,8 @@ public class Agent extends ViewableAtomic {
 
                 buyOrder = makeBuyOrder(numBitcoinBuy, buyLimitPrice, expirationTime);
             }
-
             // Issue Sell order
-            if (cVariance < 0.01) {
+            else {
                 holdIn("issueSellOrder", 0);
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();

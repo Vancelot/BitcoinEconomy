@@ -15,7 +15,7 @@ public class Market extends ViewableDigraph {
     private MultiServer multiServer;
 
     private final int NUMBER_OF_INITIAL_TRADERS = 3;
-    private final int TOTAL_NUMBER_OF_TRADERS = 5; // Total number of traders at the end of simulation
+    private final int TOTAL_NUMBER_OF_TRADERS = 100; // Total number of traders at the end of simulation
     private final double INITIAL_BITCOINS_OF_INITIAL_TRADERS = 87.28;
     private final double INITIAL_BITCOIN_PRICE = 0.0649; // The average price as of September 2010
 
@@ -37,6 +37,7 @@ public class Market extends ViewableDigraph {
         add(orderBook); // Add the Model Book to the Market model
 
         addCoupling(this, "inBitcoinPrice", multiServer, "inBitcoinPrice");
+        addCoupling(this, "inBitcoinPrice", orderBook, "inBitcoinPrice");
         addCoupling(this, "inTime", multiServer, "inTime");
         addCoupling(this, "inTime", orderBook, "inTime");
 
