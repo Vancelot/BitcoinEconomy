@@ -23,7 +23,7 @@ public class ExpFrame extends ViewableDigraph {
         add(Generator);
         add(Transducer);
 
-        addInport("inTransaction");
+        addInport("inTransactions");
         addInport("inHashRate");
         addInport("inNumBitcoin");
 
@@ -32,7 +32,7 @@ public class ExpFrame extends ViewableDigraph {
         addOutport("outTotHashRate");
         addOutport("outTotNumBitcoin");
 
-        addCoupling(this, "inTransaction", Generator, "inTransaction");
+        addCoupling(this, "inTransactions", Generator, "inTransactions");
         addCoupling(this, "inHashRate", Transducer, "inHashRate");
         addCoupling(this, "inNumBitcoin", Transducer, "inNumBitcoin");
 

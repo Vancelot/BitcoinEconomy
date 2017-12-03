@@ -42,6 +42,8 @@ public class Generator extends ViewableAtomic {
         super.initialize();
         phase = "active";
         sigma = 1;
+        
+        transQ = new Queue();
     }
 
     public void deltext(double e, message x) {

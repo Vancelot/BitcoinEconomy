@@ -27,7 +27,7 @@ public class EF_Market extends ViewableDigraph {
         addOutport("totNumBitcoin");
         addOutport("priceBitcoin");
         
-        addCoupling(Market, "outTransactions", ExpFrame, "inTransaction");
+        addCoupling(Market, "outTransactions", ExpFrame, "inTransactions");
         addCoupling(Market, "outHashRates", ExpFrame, "inHashRate");
         addCoupling(Market, "outNumBitcoin", ExpFrame, "inNumBitcoin");
                 

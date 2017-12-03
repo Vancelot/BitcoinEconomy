@@ -624,7 +624,7 @@ public class Agent extends ViewableAtomic {
             Plim = 1;
         }
         if (type == AgentType.RANDOM_TRADER) {
-            Plim = 0.2;
+            Plim = 0.6; // Originally 0.2
         } else if (type == AgentType.CHARTIST) {
             Plim = 0.7;
         }
@@ -711,10 +711,10 @@ public class Agent extends ViewableAtomic {
         Random r = new Random();
         double beta = 0;
         if (type == AgentType.CHARTIST) {
-            beta = (double) Math.exp(r.nextGaussian() * 0.2 + 0.25);
+            beta = r.nextGaussian() * 0.2 + 0.25; // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.25);
         }
         if (type == AgentType.RANDOM_TRADER) {
-            beta = (double) Math.exp(r.nextGaussian() * 0.2 + 0.4);
+            beta = r.nextGaussian() * 0.2 + 0.4; // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.4);
         }
 
         double ba;
