@@ -17,7 +17,10 @@ import model.modeling.message;
 public class Agent extends ViewableAtomic {
     private static final double EULER_MASCHERONI_CONSTANT_GAMMA = 0.57721566490153286060651209008240243104215933593992;
     private static final double INITIAL_BITCOINS_OF_RICHEST_TRADER_AT_TIME_1 = 4117;
-
+    
+    private static final double INITIAL_BITCOINS_OF_INITIAL_AGENTS = 87.28;
+    private static final double INITIAL_CASH_OF_ALL_AGENTS = 436.39;
+    
     public enum AgentType {
         NONE, MINER, RANDOM_TRADER, CHARTIST
     }
@@ -112,14 +115,19 @@ public class Agent extends ViewableAtomic {
                 marketTime = Integer.parseInt(uTime.toString()); // TODO: Takes message (entity) on port converts to
                                                                  // string, then to integer
 
-                // Wake up agent to enter market
-                if ((marketTime > 0) && (enterMarket == false) && enterToMarket(marketTime)) {
+                // Wake up agent to enter market, wait after 1 to start to make sure the BitcoinPrice message is received first
+                if ((marketTime >= 1) && (enterMarket == false) && enterToMarket(marketTime)) {
                     enterMarket = true;
 
                     enterMarketTime = marketTime;
 
-                    this.numBitcoin = getInitialBitcoins(marketTime);
-                    this.cash = 5 * (this.numBitcoin * bitcoinPrice);
+                    if (marketTime == 1)
+                        this.numBitcoin = INITIAL_BITCOINS_OF_INITIAL_AGENTS; //getInitialBitcoins(marketTime);
+                    else
+                        // All new agents will start with 0 bitcoins and need to buy Bitcoins
+                        this.numBitcoin = 0;
+                    
+                    this.cash = INITIAL_CASH_OF_ALL_AGENTS; //5 * (this.numBitcoin * bitcoinPrice);
                     this.type = determineAgentType(marketTime);
                     minerDecisionTime = decisionTime(agentTime);
 
@@ -300,7 +308,7 @@ public class Agent extends ViewableAtomic {
 
     // Create a Sell order
     Order makeSellOrder(double aAmount, double aLimitPrice, int aExpirationTime) {
-        Order order = new Order(OrderType.BUY, id, aAmount, aLimitPrice, aExpirationTime);
+        Order order = new Order(OrderType.SELL, id, aAmount, aLimitPrice, aExpirationTime);
         pendingBitcoin = aAmount;
 
         return order;

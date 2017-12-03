@@ -52,6 +52,7 @@ public class OrderBook extends ViewableAtomic {
 
         marketPrice = 0;
         time = 0;
+        passivate();
     }
 
     public void deltext(double e, message x) {
@@ -76,16 +77,12 @@ public class OrderBook extends ViewableAtomic {
                         // Then save to list in the sorted order
                         buyList.add(order);
                         Collections.sort(buyList);
-
-                        holdIn("matching", 0);
                     } else if (order.type == Order.OrderType.SELL) {
                         // Initialize Residual Amount to Amount
                         order.residualAmount = order.amount;
                         // Then save to list in the sorted order
                         sellList.add(order);
                         Collections.sort(sellList);
-
-                        holdIn("matching", 0);
                     }
                 } else if (messageOnPort(x, "inTime", i)) {
                     time++;
@@ -167,6 +164,8 @@ public class OrderBook extends ViewableAtomic {
 
                 buyList.remove(0); // This buy order is completed
             }
+            
+            holdIn("outputTransactions", 0); // Output now
         }
     }
 
@@ -236,7 +235,7 @@ public class OrderBook extends ViewableAtomic {
 
         content con = makeContent("outTransactions", new entity("Transaction"));
 
-        while (transactionQ.first() != null) {
+        while ((transactionQ.size()) > 0 && (transactionQ.first() != null)) {
             TransactionEntity transactionEntity = (TransactionEntity) transactionQ.first();
 
             con = makeContent("outTransactions", transactionEntity);
