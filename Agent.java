@@ -335,9 +335,8 @@ public class Agent extends ViewableAtomic {
         if (result < pM)
             return AgentType.MINER;
         else {
-            double pR = 0.7 * (1 - pM);
             result = r.nextDouble(); // 0.0 to 1.0
-            if (result < pR)
+            if (result < 0.7)
                 return AgentType.RANDOM_TRADER;
             else
                 return AgentType.CHARTIST;
@@ -711,10 +710,10 @@ public class Agent extends ViewableAtomic {
         Random r = new Random();
         double beta = 0;
         if (type == AgentType.CHARTIST) {
-            beta = r.nextGaussian() * 0.2 + 0.25; // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.25);
+            beta = Math.abs(r.nextGaussian() * 0.2 + 0.25); // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.25);
         }
         if (type == AgentType.RANDOM_TRADER) {
-            beta = r.nextGaussian() * 0.2 + 0.4; // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.4);
+            beta = Math.abs(r.nextGaussian() * 0.2 + 0.4); // Originally (double) Math.exp(r.nextGaussian() * 0.2 + 0.4);
         }
 
         double ba;
