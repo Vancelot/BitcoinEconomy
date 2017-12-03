@@ -624,7 +624,7 @@ public class Agent extends ViewableAtomic {
             Plim = 1;
         }
         if (type == AgentType.RANDOM_TRADER) {
-            Plim = 0.6; // Originally 0.2
+            Plim = 0.2;
         } else if (type == AgentType.CHARTIST) {
             Plim = 0.7;
         }
@@ -691,7 +691,7 @@ public class Agent extends ViewableAtomic {
         // ave = 1, stdv << 1
 
         Random r = new Random();
-        double var = (double) Math.round(r.nextGaussian() * .00001 + 1);
+        double var = r.nextGaussian() * .00001 + 1;
 
         double result = r.nextDouble(); // 0.0 to 1.0
 
