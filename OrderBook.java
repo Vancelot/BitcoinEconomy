@@ -12,18 +12,19 @@ import view.modeling.ViewableAtomic;
 import view.modeling.ViewableComponent;
 import view.modeling.ViewableDigraph;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
 public class OrderBook extends ViewableAtomic {
-
+    public static final double BITCOIN_PRICE_ERROR_LIMIT = 99999;
+    
     protected Queue transactionQ;
 
-    protected ArrayList<Order> buyList;
-    protected ArrayList<Order> sellList;
+    protected LinkedList<Order> buyList;
+    protected LinkedList<Order> sellList;
     protected double marketPrice;
 
     protected int time;
@@ -36,8 +37,8 @@ public class OrderBook extends ViewableAtomic {
         super(name);
         transactionQ = new Queue();
 
-        buyList = new ArrayList<Order>();
-        sellList = new ArrayList<Order>();
+        buyList = new LinkedList<Order>();
+        sellList = new LinkedList<Order>();
 
         addInport("inBitcoinPrice");
         addInport("inOrders");
@@ -120,49 +121,58 @@ public class OrderBook extends ViewableAtomic {
         // A sell order (with index j) and buy order (with index i) are considered
         // a match if sj <= bi
         while (((buyList.size() > 0) && (sellList.size() > 0) &&
-                ((buyList.get(0).limitPrice >= sellList.get(0).limitPrice) || (buyList.get(0).limitPrice == 0)
-                || (sellList.get(0).limitPrice == 0)))) {
+                ((buyList.getFirst().limitPrice >= sellList.getFirst().limitPrice) || (buyList.getFirst().limitPrice == 0)
+                || (sellList.getFirst().limitPrice == 0)))) {
             Transaction transaction;
             TransactionEntity transEntity;
 
             // First determine the price for the transaction
-            double price = determinePrice(buyList.get(0).limitPrice, sellList.get(0).limitPrice);
-            double buyerResidualAmountInCash = buyList.get(0).residualAmount;
-            double sellerResidualAmountInCash = sellList.get(0).residualAmount * price;
+            double price = determinePrice(buyList.getFirst().limitPrice, sellList.getFirst().limitPrice);
+            double buyerResidualAmountInCash = buyList.getFirst().residualAmount;
+            double sellerResidualAmountInCash = sellList.getFirst().residualAmount * price;
             double bitcoinAmount = 0;
 
+            if (buyerResidualAmountInCash == 0) {
+                buyList.remove();
+                continue;
+            }
+            if (sellerResidualAmountInCash == 0) {
+                sellList.remove();
+                continue;
+            }
+            
             // Start to execute order: compare orders in terms of Residual Amount in cash
             if (buyerResidualAmountInCash == sellerResidualAmountInCash) {
-                bitcoinAmount = sellList.get(0).residualAmount;
-                buyList.get(0).residualAmount = 0;
-                sellList.get(0).residualAmount = 0;
+                bitcoinAmount = sellList.getFirst().residualAmount;
+                buyList.getFirst().residualAmount = 0;
+                sellList.getFirst().residualAmount = 0;
 
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
+                transaction = new Transaction(buyList.getFirst(), sellList.getFirst(), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
-                sellList.remove(0); // This sell order is completed
-                buyList.remove(0); // This buy order is completed
+                sellList.remove(); // This sell order is completed
+                buyList.remove(); // This buy order is completed
             } else if (buyerResidualAmountInCash > sellerResidualAmountInCash) {
-                bitcoinAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
-                buyList.get(0).residualAmount = buyerResidualAmountInCash - sellerResidualAmountInCash;
-                sellList.get(0).residualAmount = 0;
+                bitcoinAmount = buyerResidualAmountInCash / price - sellList.getFirst().residualAmount;
+                buyList.getFirst().residualAmount = buyerResidualAmountInCash - sellerResidualAmountInCash;
+                sellList.getFirst().residualAmount = 0;
 
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
+                transaction = new Transaction(buyList.getFirst(), sellList.getFirst(), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
-                sellList.remove(0); // This sell order is completed
+                sellList.remove(); // This sell order is completed
             } else {
-                bitcoinAmount = sellList.get(0).residualAmount - buyerResidualAmountInCash / price;
-                sellList.get(0).residualAmount = buyerResidualAmountInCash / price - sellList.get(0).residualAmount;
-                buyList.get(0).residualAmount = 0;
+                bitcoinAmount = sellList.getFirst().residualAmount - buyerResidualAmountInCash / price;
+                sellList.getFirst().residualAmount = sellList.getFirst().residualAmount - buyerResidualAmountInCash / price;
+                buyList.getFirst().residualAmount = 0;
 
-                transaction = new Transaction(buyList.get(0), sellList.get(0), price, bitcoinAmount);
+                transaction = new Transaction(buyList.getFirst(), sellList.getFirst(), price, bitcoinAmount);
                 transEntity = new TransactionEntity(transaction);
                 transactionQ.add(transEntity);
 
-                buyList.remove(0); // This buy order is completed
+                buyList.remove(); // This buy order is completed
             }
 
             holdIn("outputTransactions", 0); // Output now

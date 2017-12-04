@@ -41,7 +41,14 @@ public class MultiServer extends ViewableDigraph {
         add(co);
 
         for (int i = 1; i <= totalNumberTraders; i++) {
-            Agent agent = new Agent("Agent", AgentType.NONE, i, initialBitcoinsInitialTraders, initialBitcoinPrice, false);
+            Agent agent;
+            if (i <= numberInitialTraders) {
+                agent = new Agent("Agent", Agent.determineAgentType(1), i, initialBitcoinsInitialTraders, initialBitcoinPrice,
+                        true);
+            } else
+                agent = new Agent("Agent", AgentType.NONE, i, initialBitcoinsInitialTraders, initialBitcoinPrice,
+                        false);
+            
             add(agent);
             agent.setPreferredLocation(new Point(187, 22 + 80 * (i - 1)));
 
