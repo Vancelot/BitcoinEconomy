@@ -645,7 +645,7 @@ public class Agent extends ViewableAtomic {
         if (type == AgentType.RANDOM_TRADER) {
             Plim = 0.2;
         } else if (type == AgentType.CHARTIST) {
-            Plim = 0.5; // Originally 0.7
+            Plim = 0.7;
         }
 
         return (Plim);
@@ -756,11 +756,12 @@ public class Agent extends ViewableAtomic {
             ba = cbi * beta / bitcoinPrice;
         }
         // Catch simulation error
+        /*
         if (ba >= 1000000) {
             System.out.println("ERROR: Agent - beta " + beta);
             System.out.println("ERROR: Agent - cash " + cash);
             System.out.println("ERROR: Agent - pendingCash " + pendingCash);
-        }
+        }*/
         return (ba);
     }
 
