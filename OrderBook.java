@@ -47,7 +47,7 @@ public class OrderBook extends ViewableAtomic {
 
     public void initialize() {
         super.initialize();
-        transactionQ = new Queue();
+        transactionQ.clear();
         sigma = INFINITY;
         phase = "passive";
 

@@ -9,7 +9,7 @@ import view.modeling.ViewableDigraph;
 
 public class ExpFrame extends ViewableDigraph {
     public static final int TOTAL_SIMULATION_TIME = 1856;
-
+    
     public ExpFrame() {
         this("ExpFrame");
     }
@@ -17,7 +17,7 @@ public class ExpFrame extends ViewableDigraph {
     public ExpFrame(String name) {
         super(name);
 
-        ViewableAtomic Generator = new Generator("Generator", 0.0649, 23274, 0);
+        ViewableAtomic Generator = new Generator("Generator", Market.INITIAL_BITCOIN_PRICE);
         ViewableAtomic Transducer = new Transducer("Transducer", TOTAL_SIMULATION_TIME);
 
         add(Generator);

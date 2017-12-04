@@ -45,6 +45,8 @@ public class Transducer extends ViewableAtomic {
         totHashRate = 0.0;
         time = 0;
 
+        hashRateQ.clear();
+        
         holdIn("outputTime", 1);
     }
 
@@ -57,11 +59,6 @@ public class Transducer extends ViewableAtomic {
                 hashRate = x.getValOnPort("inHashRate", i);
 
                 hashRateQ.add(hashRate);
-
-                // TODO: extract current hash rate from message
-                // Remove old and hash rate
-                // Sum current total hash rate
-
             }
     }
 
@@ -70,8 +67,6 @@ public class Transducer extends ViewableAtomic {
         totHashRate = 0.0;
         entity hashRate;
 
-        time++;
-
         while (!hashRateQ.isEmpty()) {
             hashRate = (entity) hashRateQ.first();
             double hRate = Double.parseDouble(hashRate.toString());
@@ -79,12 +74,16 @@ public class Transducer extends ViewableAtomic {
             hashRateQ.remove(hashRate);
         }
 
+        time++;
         // Stop all outputs when end time is reached
-        if (time <= modelTime)
+        if (time <= modelTime) {
             holdIn("outputTime", 1);
-        else
+        }
+        else {
             passivate();
-
+            System.out.println("Tranducer: Going to Passive state");
+        }
+        
         if (time < 853) {
             totNumBitcoin = time * 72;
         } else
@@ -116,7 +115,8 @@ public class Transducer extends ViewableAtomic {
 
         con = makeContent("outTime", new entity(String.valueOf(time)));
         m.add(con);
-
+        System.out.println("Tranducer: output time at " + time);
+        
         return m;
     }
 

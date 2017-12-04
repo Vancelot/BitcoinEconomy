@@ -1,5 +1,6 @@
 package BitcoinEcon;
 
+import BitcoinEcon.Agent.AgentType;
 import GenCol.*;
 import view.modeling.ViewableAtomic;
 import model.modeling.*;
@@ -19,7 +20,7 @@ public class MultiServerCoord extends Agent {
     }
 
     public MultiServerCoord(String name) {
-        super();
+        super(name, AgentType.NONE, 0, 0, 0, false);
 
         transactionQ = new Queue();
         orderQ = new Queue();
@@ -41,6 +42,8 @@ public class MultiServerCoord extends Agent {
 
         bitcoinPriceMessage = null;
         timeMessage = null;
+        transactionQ.clear();
+        orderQ.clear();
     }
 
     public void showState() {
@@ -87,7 +90,7 @@ public class MultiServerCoord extends Agent {
             entity transactionEntity = (entity) transactionQ.get(i);
             m.add(makeContent("outTransactions", transactionEntity));
         }
-        transactionQ = new Queue();
+        transactionQ.clear();
 
         if (bitcoinPriceMessage != null) {
             m.add(makeContent("outBitcoinPrice", bitcoinPriceMessage));
