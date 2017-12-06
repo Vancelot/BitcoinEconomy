@@ -7,7 +7,7 @@ import model.modeling.*;
 import view.modeling.ViewableAtomic;
 
 public class Transducer extends ViewableAtomic {
-    public static final int TOTAL_SIMULATION_TIME_DEFAULT = 900;
+    public static final int TOTAL_SIMULATION_TIME_DEFAULT = 950;
     
     protected Queue hashRateQ;
 

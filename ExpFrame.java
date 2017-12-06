@@ -8,7 +8,7 @@ import view.modeling.ViewableComponent;
 import view.modeling.ViewableDigraph;
 
 public class ExpFrame extends ViewableDigraph {
-    public static final int TOTAL_SIMULATION_TIME = 1856;
+    public static final int TOTAL_SIMULATION_TIME = 950;
     
     public ExpFrame() {
         this("ExpFrame");

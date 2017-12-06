@@ -161,7 +161,7 @@ public class Agent extends ViewableAtomic {
                         runChartist();
                 }
 
-                holdIn("output", 0);
+                //holdIn("output", 0);
             } else if (messageOnPort(x, "inBitcoinPrice", i)) { // Updating Price of Bitcoin
                 entity marketPrice;
                 marketPrice = x.getValOnPort("inBitcoinPrice", i);
@@ -234,7 +234,7 @@ public class Agent extends ViewableAtomic {
         if (((cash - pendingCash) > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
             if (agentTime == minerDecisionTime) {
                 outputSellOrder = true;
-
+                holdIn("output", 0);
                 buyHardware = true;
 
                 double numBitcoinSell = numBitcoinSell();
@@ -248,7 +248,7 @@ public class Agent extends ViewableAtomic {
         else if (((cash - pendingCash) <= 0) && ((numBitcoin - pendingBitcoin) > 0)) {
             // issue sell order
             outputSellOrder = true;
-
+            holdIn("output", 0);
             buyHardware = false;
             double numBitcoinSell = numBitcoinSell();
             double sellLimitPrice = sellLimitPrice();
@@ -278,7 +278,7 @@ public class Agent extends ViewableAtomic {
             // Issue Buy order
             if ((result >= .5) && ((cash - pendingCash) > 0)) { // Originally 0.5
                 outputBuyOrder = true;
-
+                holdIn("output", 0);
                 double numBitcoinBuy = numBitcoinBuy();
                 double buyLimitPrice = buyLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -288,7 +288,7 @@ public class Agent extends ViewableAtomic {
             // Issue Sell order
             else if ((result < .5) && (numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
                 outputSellOrder = true;
-
+                holdIn("output", 0);
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -309,7 +309,7 @@ public class Agent extends ViewableAtomic {
             // Issue Buy order
             if ((cVariance > 0.01) && (cash > 0) && ((cash - pendingCash) > 0)) {
                 outputBuyOrder = true;
-
+                holdIn("output", 0);
                 double numBitcoinBuy = numBitcoinBuy();
                 double buyLimitPrice = buyLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -319,7 +319,7 @@ public class Agent extends ViewableAtomic {
             // Issue Sell order
             else if ((numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
                 outputSellOrder = true;
-
+                holdIn("output", 0);
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();
                 int expirationTime = expirationTime(marketTime);
