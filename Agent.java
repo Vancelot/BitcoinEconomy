@@ -20,6 +20,7 @@ public class Agent extends ViewableAtomic {
 
     private static final double INITIAL_BITCOINS_OF_INITIAL_AGENTS = 87.28;
     private static final double INITIAL_CASH_OF_ALL_AGENTS = 436.39;
+    private static final double INITIAL_HAST_RATE = 0.0173;
 
     public enum AgentType {
         NONE, MINER, RANDOM_TRADER, CHARTIST
@@ -53,6 +54,9 @@ public class Agent extends ViewableAtomic {
 
     protected boolean enterMarket; // Indication of whether the agent is active or not
     protected boolean buyHardware;
+
+    protected boolean outputBuyOrder;
+    protected boolean outputSellOrder;
 
     protected double hashRate; // miner Hash Rate
 
@@ -89,7 +93,7 @@ public class Agent extends ViewableAtomic {
     public void initialize() {
         super.initialize();
 
-        bitcoinPrice = 0;
+        this.bitcoinPrice = 0;
         sigma = INFINITY;
         phase = "passive";
         this.marketTime = 0;
@@ -103,10 +107,12 @@ public class Agent extends ViewableAtomic {
         this.pendingBitcoin = 0;
         this.pendingCash = 0;
 
-        justEnteredMaket = false;
+        this.justEnteredMaket = false;
+        this.outputBuyOrder = false;
+        this.outputSellOrder = false;
 
-        buyOrder = null;
-        sellOrder = null;
+        this.buyOrder = null;
+        this.sellOrder = null;
     }
 
     public void deltext(double e, message x) {
@@ -135,8 +141,10 @@ public class Agent extends ViewableAtomic {
 
                     this.cash = INITIAL_CASH_OF_ALL_AGENTS; // 5 * (this.numBitcoin * bitcoinPrice);
                     this.type = determineAgentType(marketTime);
-                    if (this.type == AgentType.MINER)
+                    if (this.type == AgentType.MINER) {
                         minerDecisionTime = decisionTime(agentTime);
+                        hashRate = INITIAL_HAST_RATE;
+                    }
 
                     pendingBitcoin = 0;
                     pendingCash = 0;
@@ -152,17 +160,14 @@ public class Agent extends ViewableAtomic {
                     else if (type == AgentType.CHARTIST)
                         runChartist();
                 }
+
+                holdIn("output", 0);
             } else if (messageOnPort(x, "inBitcoinPrice", i)) { // Updating Price of Bitcoin
                 entity marketPrice;
                 marketPrice = x.getValOnPort("inBitcoinPrice", i);
                 lastPrice = bitcoinPrice; // Updates last Price of Bitcoin
                 bitcoinPrice = Double.parseDouble(marketPrice.toString()); // Updates Price of Bitcoin
             } else if (messageOnPort(x, "inTransactions", i) && enterMarket) {
-                // Only process Transaction messages when the agent is active
-                if (type == AgentType.MINER && buyHardware == true) {
-                    hashRate = hashRate + minerHashRate(agentTime); // Updates miner Hash Rate
-                }
-
                 // Retrieve Transaction
                 TransactionEntity message = (TransactionEntity) x.getValOnPort("inTransactions", i);
                 Transaction transaction = message.getv();
@@ -196,6 +201,14 @@ public class Agent extends ViewableAtomic {
                         cash += transaction.bitcoinAmount * transaction.price;
                         pendingBitcoin -= transaction.bitcoinAmount;
                         numBitcoin -= transaction.bitcoinAmount;
+
+                        // Only process Transaction messages when the agent is active
+                        if (type == AgentType.MINER && buyHardware == true) {
+                            buyHardware = false;
+                            hashRate += minerHashRate(agentTime); // Updates miner Hash Rate
+                            
+                            System.out.println("Agent: Just sold hardware for new Hash Rate: " + hashRate);
+                        }
                     }
                 }
             }
@@ -218,9 +231,10 @@ public class Agent extends ViewableAtomic {
         numBitcoin = numBitcoin + minedBitcoinPerMiner(agentTime); // TODO: when to call?
 
         // Check if it is time to purchase hardware
-        if ((cash > 0) && ((cash - pendingCash) > 0) && (numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
+        if (((cash - pendingCash) > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
             if (agentTime == minerDecisionTime) {
-                holdIn("issueSellOrder", 0);
+                outputSellOrder = true;
+
                 buyHardware = true;
 
                 double numBitcoinSell = numBitcoinSell();
@@ -228,16 +242,13 @@ public class Agent extends ViewableAtomic {
                 int expirationTime = expirationTime(marketTime);
 
                 sellOrder = makeSellOrder(numBitcoinSell, sellLimitPrice, expirationTime);
-                // cash = cash - (cash * percentCashForHardware(sigma));
-                // numBitcoin = numBitcoin - (numBitcoin *
-                // percentBitcoinCashForHardware(sigma));
-                // These values must be extracted from Transaction messages
             }
         }
         // If running out of cash, sell Bitcoins to get cash to pay bills
-        else if (((cash - pendingCash) <= 0) && (numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
+        else if (((cash - pendingCash) <= 0) && ((numBitcoin - pendingBitcoin) > 0)) {
             // issue sell order
-            holdIn("issueSellOrder", 0);
+            outputSellOrder = true;
+
             buyHardware = false;
             double numBitcoinSell = numBitcoinSell();
             double sellLimitPrice = sellLimitPrice();
@@ -266,7 +277,7 @@ public class Agent extends ViewableAtomic {
 
             // Issue Buy order
             if ((result >= .5) && ((cash - pendingCash) > 0)) { // Originally 0.5
-                holdIn("issueBuyOrder", 0);
+                outputBuyOrder = true;
 
                 double numBitcoinBuy = numBitcoinBuy();
                 double buyLimitPrice = buyLimitPrice();
@@ -276,7 +287,8 @@ public class Agent extends ViewableAtomic {
             }
             // Issue Sell order
             else if ((result < .5) && (numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
-                holdIn("issueSellOrder", 0);
+                outputSellOrder = true;
+
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -296,7 +308,8 @@ public class Agent extends ViewableAtomic {
 
             // Issue Buy order
             if ((cVariance > 0.01) && (cash > 0) && ((cash - pendingCash) > 0)) {
-                holdIn("issueBuyOrder", 0);
+                outputBuyOrder = true;
+
                 double numBitcoinBuy = numBitcoinBuy();
                 double buyLimitPrice = buyLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -305,7 +318,8 @@ public class Agent extends ViewableAtomic {
             }
             // Issue Sell order
             else if ((numBitcoin > 0) && ((numBitcoin - pendingBitcoin) > 0)) {
-                holdIn("issueSellOrder", 0);
+                outputSellOrder = true;
+
                 double numBitcoinSell = numBitcoinSell();
                 double sellLimitPrice = sellLimitPrice();
                 int expirationTime = expirationTime(marketTime);
@@ -486,16 +500,7 @@ public class Agent extends ViewableAtomic {
         } else
             riu = marketUnitHashRate(t);
 
-        double initMinerRi;
-        if (marketTime == 0 && id <= 160) { // model time
-            initMinerRi = 0.0173;
-        } else
-            initMinerRi = 0;
-
-        double sumMinerRi = initMinerRi;
-        sumMinerRi = sumMinerRi + riu;
-
-        return (sumMinerRi);
+        return riu;
     }
 
     private double bestPower(int t) {
@@ -688,7 +693,6 @@ public class Agent extends ViewableAtomic {
         }
 
         double sa;
-        // TODO: define pendingBitcoin as Bitcoin still in OrderBook
 
         double bsi = numBitcoin - pendingBitcoin;
 
@@ -757,11 +761,10 @@ public class Agent extends ViewableAtomic {
         }
         // Catch simulation error
         /*
-        if (ba >= 1000000) {
-            System.out.println("ERROR: Agent - beta " + beta);
-            System.out.println("ERROR: Agent - cash " + cash);
-            System.out.println("ERROR: Agent - pendingCash " + pendingCash);
-        }*/
+         * if (ba >= 1000000) { System.out.println("ERROR: Agent - beta " + beta);
+         * System.out.println("ERROR: Agent - cash " + cash);
+         * System.out.println("ERROR: Agent - pendingCash " + pendingCash); }
+         */
         return (ba);
     }
 
@@ -794,12 +797,16 @@ public class Agent extends ViewableAtomic {
         // expiration date
 
         message m = new message();
-
         content con;
-        con = makeContent("outHashRates", new entity(String.valueOf(hashRate)));
-        m.add(con);
 
-        if (phaseIs("issueSellOrder")) {
+        if (type == AgentType.MINER) {
+            con = makeContent("outHashRates", new entity(String.valueOf(hashRate)));
+            m.add(con);
+        }
+
+        if (outputSellOrder) {
+            outputSellOrder = false;
+
             con = makeContent("outOrders", new OrderEntity(sellOrder));
             sellOrder = null;
             if (type == AgentType.MINER) {
@@ -811,7 +818,9 @@ public class Agent extends ViewableAtomic {
                 m.add(con);
             } else
                 m.add(con);
-        } else if (phaseIs("issueBuyOrder")) {
+        } else if (outputBuyOrder) {
+            outputBuyOrder = false;
+
             con = makeContent("outOrders", new OrderEntity(buyOrder));
             buyOrder = null;
             m.add(con);

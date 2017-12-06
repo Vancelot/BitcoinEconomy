@@ -7,7 +7,7 @@ import model.modeling.*;
 import view.modeling.ViewableAtomic;
 
 public class Transducer extends ViewableAtomic {
-    public static final int TOTAL_SIMULATION_TIME_DEFAULT = 1856;
+    public static final int TOTAL_SIMULATION_TIME_DEFAULT = 900;
     
     protected Queue hashRateQ;
 
@@ -53,27 +53,17 @@ public class Transducer extends ViewableAtomic {
     public void deltext(double e, message x) {
         Continue(e);
 
+        totHashRate = 0;
         for (int i = 0; i < x.getLength(); i++)
             if (messageOnPort(x, "inHashRate", i)) {
-                entity hashRate;
-                hashRate = x.getValOnPort("inHashRate", i);
-
-                hashRateQ.add(hashRate);
+                entity hashRateEntity;
+                hashRateEntity = x.getValOnPort("inHashRate", i);
+                double hashRate = Double.parseDouble(hashRateEntity.toString());
+                totHashRate += hashRate;
             }
     }
 
     public void deltint() {
-
-        totHashRate = 0.0;
-        entity hashRate;
-
-        while (!hashRateQ.isEmpty()) {
-            hashRate = (entity) hashRateQ.first();
-            double hRate = Double.parseDouble(hashRate.toString());
-            totHashRate = totHashRate + hRate;
-            hashRateQ.remove(hashRate);
-        }
-
         time++;
         // Stop all outputs when end time is reached
         if (time <= modelTime) {
@@ -103,10 +93,12 @@ public class Transducer extends ViewableAtomic {
         content con;
         con = makeContent("outTotHashRate", new entity(String.valueOf(totHashRate)));
         m.add(con);
-
+        System.out.println("Transducer: Total Hash Rate " + totHashRate);
+        
         con = makeContent("outTotNumBitcoin", new entity(String.valueOf(totNumBitcoin)));
         m.add(con);
-
+        System.out.println("Transducer: Total Bitcoins " + totNumBitcoin);
+        
         // Output stop to Generator
         if (time == modelTime) {
             con = makeContent("outStop", new entity("Stop"));
